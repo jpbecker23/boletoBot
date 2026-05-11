@@ -1,0 +1,17 @@
+# Security
+.env
+
+# Environments
+venv/
+.venv/
+env/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Project Data
+boletos/*
+!boletos/.gitkeep
