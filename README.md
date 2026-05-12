@@ -12,15 +12,26 @@ O **boletoBot** é um projeto pessoal criado para resolver o problema de esquece
 
 A automação atualmente acessa o portal do aluno, identifica se há faturas pendentes, faz o download do documento em PDF e o envia automaticamente para um contato do WhatsApp uma semana antes do vencimento. O objetivo é evitar o trabalho manual repetitivo de realizar login, navegar por menus, baixar o arquivo e encaminhar para si mesmo, e principalmente evitar que eu acabe esquecendo de pagar o boleto.
 
-![Demonstração do boletoBot](public/boletoBotTut.gif)
+![Interface do boletoBot](public/boletoBotInterface.png)
 
 
 # Configuração Rápida para Usuários não programadores
 
 Caso você prefira o modo tradicional com linha de comando, pode ignorar esta seção e [ir direto para o Setup](#setup).
 
-Conversando com um amigo percebi que o estado antigo do projeto não era muito amigavável com pessoas que não são familiarizadas com programação. Por isso, atualizei o projeto para que ele seja de fácil uso para qualquer pessoa, implementei uma janela de configuração simples e direta para inserir as informações necessárias e agendar o bot. Basta baixar o zip do projeto, entrar na pasta onde você baixou o zip e extrai-lo, entre na pasta 'boletoBot' e busque o arquivo 'run_configurator.bat', clique duas vezes nele para executar. Ele vai abrir o terminal e logo em seguida o pop-up de configuração, depois que você terminar de preencher, salvar as informações e clicar no botão "Agendar no Windows" para que o robô seja executado automaticamente todos os dias, basta clicar em qualquer tecla para que o terminal feche.
-Note que na primeira execução você precisará ler o QR code do whatsapp para logar. Basta clicar no botão "Vincular WhatsApp" e ler o QR code normalmente, suas informações de login ficarão salvas na pasta 'auth'.
+Conversando com um amigo percebi que o estado antigo do projeto não era muito amigavável com pessoas que não são familiarizadas com programação. Por isso, atualizei o projeto para que ele seja de fácil uso para qualquer pessoa, implementei uma janela de configuração simples e direta para inserir as informações necessárias e agendar o bot.
+
+Após o primeiro teste, percebi o obvio: um usuário comum não vai ter o pyhton instalado para rodar os scripts diretamente. Por isso, gerei um executável que já vem com o python incluso.
+
+1.  **Baixe o Projeto:** Baixe o arquivo `.zip` do repositório e extraia-o. (clique no botão verde "< >code" no canto superior direito para ver a opção de download)
+2.  **Abra o Executável:** Na pasta extraída, entre em `dist` e execute o arquivo `BoletoBot.exe`.
+    **Observação importante:** Como o executável não é assinado digitalmente, o Windows pode mostrar um aviso de "O Windows protegeu o seu computador" ao abrir pela primeira vez. Basta clicar em "Mais informações" e depois em "Executar assim mesmo".
+3.  **Configure:** Preencha seus dados de matrícula, senha e número do contato de quem vai recber o boleto na janela que abrirá.
+4.  **Vincule o WhatsApp:** Clique em "Vincular WhatsApp" para abrir o navegador e ler o QR Code (isso só é feito uma vez).
+5.  **Agende:** Clique em "Agendar no Windows" para que o robô trabalhe para você todos os dias às 10:00.
+
+> [!TIP]
+> Na primeira vez que você clicar em um botão de ação, o robô pode demorar alguns segundos para baixar as dependências do navegador (Chromium). Isso é normal e só acontece uma vez!
 
 # Features
 
