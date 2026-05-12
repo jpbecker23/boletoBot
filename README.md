@@ -13,7 +13,7 @@ O **boletoBot** é um projeto pessoal criado para resolver o problema de esquece
 A automação atualmente acessa o portal do aluno, identifica se há faturas pendentes, faz o download do documento em PDF e o envia automaticamente para um contato do WhatsApp uma semana antes do vencimento. O objetivo é evitar o trabalho manual repetitivo de realizar login, navegar por menus, baixar o arquivo e encaminhar para si mesmo, e principalmente evitar que eu acabe esquecendo de pagar o boleto.
 
 <p align="center">
-  <img src="public/boletoBotInterface.png" width="600" alt="Interface do boletoBot">
+  <img src="public/boletoBotInterface.png" width="300" alt="Interface do boletoBot">
 </p>
 
 
