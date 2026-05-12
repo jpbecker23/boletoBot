@@ -26,9 +26,10 @@ Conversando com um amigo percebi que o estado antigo do projeto não era muito a
 
 Após o primeiro teste, percebi o obvio: um usuário comum não vai ter o pyhton instalado para rodar os scripts diretamente. Por isso, gerei um executável que já vem com o python incluso.
 
-1.  **Baixe o Projeto:** Baixe o arquivo `.zip` do repositório e extraia-o. (clique no botão verde "< >code" no canto superior direito para ver a opção de download)
-2.  **Abra o Executável:** Na pasta extraída, entre em `dist` e execute o arquivo `BoletoBot.exe`.
+1.  **Baixe o Executável:** Vá na aba [**Releases**](https://github.com/jpbecker23/boletoBot/releases) do repositório e baixe a versão mais recente do `BoletoBot.exe`.
+2.  **Execute:** Coloque o arquivo em uma pasta de sua preferência e execute-o.
     **Observação importante:** Como o executável não é assinado digitalmente, o Windows pode mostrar um aviso de "O Windows protegeu o seu computador" ao abrir pela primeira vez. Basta clicar em "Mais informações" e depois em "Executar assim mesmo".
+
 3.  **Configure:** Preencha seus dados de matrícula, senha e número do contato de quem vai recber o boleto na janela que abrirá.
 4.  **Vincule o WhatsApp:** Clique em "Vincular WhatsApp" para abrir o navegador e ler o QR Code (isso só é feito uma vez).
 5.  **Agende:** Clique em "Agendar no Windows" para que o robô trabalhe para você todos os dias às 10:00.
@@ -55,7 +56,8 @@ Após o primeiro teste, percebi o obvio: um usuário comum não vai ter o pyhton
 
 # Estrutura do Projeto
 
-A organização de diretórios dita o fluxo do sistema e a persistência de estados:
+Como é um projeto pequeno e iniciei ele com o objetivo de uso pessoal apenas, a organização de diretórios atualmente não segue nenhum padrão, mas logo irei refatorar seguindo as melhores práticas de arquitetura de software.
+(Atualmente penso em seguir POM ou DDD mas caso você tenha alguma sugestão, agradeço muito se você decidir compartilhar comigo!)
 
 ```text
 boletoBot/
