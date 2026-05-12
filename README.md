@@ -9,6 +9,13 @@ O **boletoBot** é um projeto pessoal criado para resolver o problema de esquece
 
 A automação atualmente acessa o portal do aluno, identifica se há faturas pendentes, faz o download do documento em PDF e o envia automaticamente para um contato do WhatsApp uma semana antes do vencimento. O objetivo é evitar o trabalho manual repetitivo de realizar login, navegar por menus, baixar o arquivo e encaminhar para si mesmo, e principalmente evitar que eu acabe esquecendo de pagar o boleto.
 
+# Configuração Rápida para Usuários não programadores
+
+Caso você prefira o modo tradicional com linha de comando, pode ignorar esta seção e [ir direto para o Setup](#setup).
+
+Conversando com um amigo percebi que o estado antigo do projeto não era muito amigavável com pessoas que não são familiarizadas com programação. Por isso, atualizei o projeto para que ele seja de fácil uso para qualquer pessoa, implementei uma janela de configuração simples e direta para inserir as informações necessárias e agendar o bot. Basta baixar o zip do projeto, entrar na pasta onde você baixou o zip e extrai-lo, entre na pasta 'boletoBot' e busque o arquivo 'run_configurator.bat', clique duas vezes nele para executar. Ele vai abrir o terminal e logo em seguida o pop-up de configuração, depois que você terminar de preencher, salvar as informações e clicar no botão "Agendar no Windows" para que o robô seja executado automaticamente todos os dias, basta clicar em qualquer tecla para que o terminal feche.
+Note que na primeira execução você precisará ler o QR code do whatsapp para logar. Basta clicar no botão "Vincular WhatsApp" e ler o QR code normalmente, suas informações de login ficarão salvas na pasta 'auth'.
+
 # Features
 
 - **Extração Automatizada:** Realiza login HTTP e varredura do DOM no portal para encontrar boletos.
@@ -19,11 +26,12 @@ A automação atualmente acessa o portal do aluno, identifica se há faturas pen
 - **Sessão Persistente:** Salva os cookies e o contexto do Chrome localmente, evitando a leitura contínua de QR Codes do WhatsApp.
 
 # Stack
-
 - **Linguagem:** Python 3.x
+- **Interface Gráfica (GUI):** `customtkinter` para uma experiência de configuração moderna e intuitiva.
 - **Extração de Dados:** `requests` para sessão HTTP estática e `beautifulsoup4` para estruturação e extração das tabelas HTML.
 - **Automação de UI (RPA):** `playwright` com Chromium para a operação da interface do WhatsApp Web.
 - **Configuração:** `python-dotenv` para injeção limpa de credenciais locais.
+- **Automação de Sistema:** PowerShell para integração e agendamento automático de tarefas no Windows.
 
 # Estrutura do Projeto
 
@@ -34,10 +42,13 @@ boletoBot/
 ├── auth/                 # Pasta autogerada: armazena cookies e sessão ativa do WhatsApp
 ├── boletos/              # Staging area: PDFs aguardando regra de data para envio
 │   └── enviados/         # Arquivo morto: faturas já processadas e enviadas
+├── scripts/              # Scripts de suporte e automação (PowerShell)
 ├── venv/                 # Ambiente virtual
 ├── .env                  # Variáveis de ambiente e segredos
 ├── baixar_boletos.py     # Script HTTP de ingestão (portal -> boletos/)
-└── enviar_boletos.py     # Script RPA de entrega (boletos/ -> WhatsApp)
+├── enviar_boletos.py     # Script RPA de entrega (boletos/ -> WhatsApp)
+├── configurator.py       # Interface gráfica de configuração (GUI)
+└── run_configurator.bat  # Atalho amigável para lançar o configurador
 ```
 
 # Como Funciona

@@ -1,3 +1,4 @@
+import sys
 import os
 import shutil
 from datetime import datetime
@@ -46,15 +47,30 @@ def selecionar_boleto():
         "pasta_enviados": pasta_enviados
     }
 
-def enviar_arquivo():
+def enviar_arquivo(headless=True):
     boleto = selecionar_boleto()
     if not boleto:
+        # Se estivermos em modo visível, talvez o usuário só queira logar
+        if not headless:
+             with sync_playwright() as p:
+                context = p.chromium.launch_persistent_context(
+                    USER_DATA_DIR,
+                    headless=False,
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                    args=["--disable-blink-features=AutomationControlled"]
+                )
+                page = context.pages[0]
+                print("Abrindo WhatsApp para autenticação...")
+                page.goto("https://web.whatsapp.com/")
+                print("Aguarde o carregamento e faça o login se necessário.")
+                print("O navegador fechará em 2 minutos ou quando você fechar a janela.")
+                page.wait_for_timeout(120000)
         return
 
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
             USER_DATA_DIR,
-            headless=False,
+            headless=headless,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             args=["--disable-blink-features=AutomationControlled"]
         )
@@ -100,8 +116,9 @@ def enviar_arquivo():
         shutil.move(caminho_absoluto, caminho_enviado)
         print(f"Boleto movido para a pasta 'enviados'.")
 
-        print("Processo concluído. Fechando navegador em 10 segundos...")
-        page.wait_for_timeout(10000)
+        print("Processo concluído. Fechando navegador em 5 segundos...")
+        page.wait_for_timeout(5000)
 
 if __name__ == "__main__":
-    enviar_arquivo()
+    is_headless = "--visible" not in sys.argv
+    enviar_arquivo(headless=is_headless)
