@@ -1,9 +1,19 @@
 
 # boletoBot
 
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-2EAD33?logo=playwright&logoColor=white)
+![GitHub last commit](https://img.shields.io/github/last-commit/jpbecker23/boletoBot)
+![GitHub repo size](https://img.shields.io/github/repo-size/jpbecker23/boletoBot)
+![Status](https://img.shields.io/badge/Status-Ativo-success)
+
+
 O **boletoBot** é um projeto pessoal criado para resolver o problema de esquecer de pagar mensalidades na data certa.
 
 A automação atualmente acessa o portal do aluno, identifica se há faturas pendentes, faz o download do documento em PDF e o envia automaticamente para um contato do WhatsApp uma semana antes do vencimento. O objetivo é evitar o trabalho manual repetitivo de realizar login, navegar por menus, baixar o arquivo e encaminhar para si mesmo, e principalmente evitar que eu acabe esquecendo de pagar o boleto.
+
+![Demonstração do boletoBot](public/boletoBotTut.gif)
+
 
 # Configuração Rápida para Usuários não programadores
 
