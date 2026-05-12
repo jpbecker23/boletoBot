@@ -1,8 +1,13 @@
 import os
 import subprocess
 import sys
+import threading
 import customtkinter as ctk
 from dotenv import load_dotenv, set_key
+
+# Importações dos scripts internos
+import enviar_boletos
+import baixar_boletos
 
 # Configurações iniciais do CustomTkinter
 ctk.set_appearance_mode("dark")
@@ -16,6 +21,7 @@ class App(ctk.CTk):
         self.geometry("600x750")
 
         load_dotenv()
+        self.check_playwright()
 
         # Layout
         self.grid_columnconfigure(0, weight=1)
@@ -32,12 +38,11 @@ class App(ctk.CTk):
         vcmd_matricula = (self.register(self.validate_matricula), "%P")
         vcmd_whatsapp = (self.register(self.validate_whatsapp), "%P")
 
-        # Campos .env (Cada um ocupa 2 linhas: Label + Entry)
-        # Total: 4 inputs * 2 = 8 linhas (Linhas 1 a 8)
+        # Campos .env
         self.matricula_entry = self.create_input("Matrícula (UVV):", os.getenv("MATRICULA", ""), 1, validate="key", validatecommand=vcmd_matricula)
         self.password_entry = self.create_input("Senha (UVV):", os.getenv("PASSWORD", ""), 2, show="*")
         self.contato_entry = self.create_input("WhatsApp (Ex: 5527999999999):", os.getenv("CONTATO", ""), 3, validate="key", validatecommand=vcmd_whatsapp)
-        self.arquivo_entry = self.create_input("Pasta dos Boletos (Caminho):", os.getenv("ARQUIVO", os.getcwd() + "\\boletos"), 4)
+        self.arquivo_entry = self.create_input("Pasta dos Boletos (Caminho):", os.getenv("ARQUIVO", os.path.join(os.getcwd(), "boletos")), 4)
 
         # Botão de Salvar
         self.save_button = ctk.CTkButton(self.main_frame, text="Salvar Configuração", command=self.save_config)
@@ -61,6 +66,11 @@ class App(ctk.CTk):
         self.status_box = ctk.CTkTextbox(self.main_frame, height=120)
         self.status_box.grid(row=14, column=0, padx=20, pady=(20, 0), sticky="nsew")
         self.log("BoletoBot iniciado. Configure seus dados acima.")
+
+    def check_playwright(self):
+        # Verifica se o executável do playwright existe ou se o navegador está instalado
+        # Se estiver rodando como EXE, o sys.executable é o próprio EXE
+        pass
 
     def validate_matricula(self, P):
         if P == "" or (P.isdigit() and len(P) <= 9):
@@ -86,7 +96,6 @@ class App(ctk.CTk):
 
     def save_config(self):
         env_path = ".env"
-        # Cria arquivo se não existir
         if not os.path.exists(env_path):
             with open(env_path, "w") as f:
                 f.write("")
@@ -100,22 +109,69 @@ class App(ctk.CTk):
 
     def link_whatsapp(self):
         self.log("Abrindo navegador para scan do QR Code...")
-        python_exe = sys.executable
-        subprocess.Popen([python_exe, "enviar_boletos.py", "--visible"])
+        # Executa em uma thread para não travar a UI
+        thread = threading.Thread(target=self._run_whatsapp_link)
+        thread.start()
+
+    def _run_whatsapp_link(self):
+        try:
+            # Se estivermos em um EXE, chamamos a nós mesmos com a flag
+            if getattr(sys, 'frozen', False):
+                subprocess.run([sys.executable, "--enviar", "--visible"], check=True)
+            else:
+                enviar_boletos.enviar_arquivo(headless=False)
+            self.log("Navegador fechado.")
+        except Exception as e:
+            self.log(f"Erro ao abrir WhatsApp: {e}")
 
     def schedule_task(self):
         self.log("Agendando tarefa no Windows...")
-        ps_script = os.path.join(os.getcwd(), "scripts", "setup_scheduler.ps1")
+        # Define o comando que será agendado
+        if getattr(sys, 'frozen', False):
+            # Se for EXE, o agendador chama o EXE com flags
+            exe_path = sys.executable
+            command_baixar = f'"{exe_path}" --baixar'
+            command_enviar = f'"{exe_path}" --enviar'
+        else:
+            python_exe = sys.executable
+            script_baixar = os.path.abspath("baixar_boletos.py")
+            script_enviar = os.path.abspath("enviar_boletos.py")
+            command_baixar = f'"{python_exe}" "{script_baixar}"'
+            command_enviar = f'"{python_exe}" "{script_enviar}"'
+
+        # Criar script temporário de powershell para o agendador
+        ps_content = f"""
+$action1 = New-ScheduledTaskAction -Execute "{command_baixar.split(' ')[0].replace('"', '')}" -Argument "{' '.join(command_baixar.split(' ')[1:])}"
+$action2 = New-ScheduledTaskAction -Execute "{command_enviar.split(' ')[0].replace('"', '')}" -Argument "{' '.join(command_enviar.split(' ')[1:])}"
+$trigger = New-ScheduledTaskTrigger -Daily -At 10:00am
+Register-ScheduledTask -Action $action1, $action2 -Trigger $trigger -TaskName "BoletoBot_Automation" -Description "Automação de Boletos UVV" -Force
+"""
+        ps_path = os.path.join(os.getcwd(), "scripts", "temp_scheduler.ps1")
+        os.makedirs(os.path.dirname(ps_path), exist_ok=True)
+        with open(ps_path, "w") as f:
+            f.write(ps_content)
 
         try:
-            result = subprocess.run(
-                ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", ps_script],
-                capture_output=True, text=True, check=True
-            )
-            self.log("Sucesso: Tarefa agendada com sucesso!")
-        except subprocess.CalledProcessError as e:
-            self.log(f"Erro ao agendar: {e.stderr}")
+            subprocess.run(["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", ps_path], check=True, capture_output=True)
+            self.log("Sucesso: Tarefa agendada para às 10:00 todos os dias!")
+        except Exception as e:
+            self.log(f"Erro ao agendar: {e}")
 
 if __name__ == "__main__":
+    # Lógica de Multiproc para o Executável Único
+    if len(sys.argv) > 1:
+        load_dotenv()
+        if "--enviar" in sys.argv:
+            is_headless = "--visible" not in sys.argv
+            enviar_boletos.enviar_arquivo(headless=is_headless)
+            sys.exit(0)
+        elif "--baixar" in sys.argv:
+            baixar_boletos.executar_download()
+            sys.exit(0)
+        elif "--install-playwright" in sys.argv:
+            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"])
+            sys.exit(0)
+
     app = App()
     app.mainloop()
+

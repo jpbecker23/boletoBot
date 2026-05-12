@@ -12,14 +12,16 @@ __pycache__/
 *.pyo
 *.pyd
 
+# PyInstaller / Build
+build/
+dist/
+*.spec
+
 # Project Data
 boletos/*
 !boletos/.gitkeep
 auth/*
 !auth/.gitkeep
 
-#Tests
+# Tests
 *test*
-
-#Docs
-docs/
