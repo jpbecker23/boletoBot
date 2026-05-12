@@ -15,3 +15,11 @@ __pycache__/
 # Project Data
 boletos/*
 !boletos/.gitkeep
+auth/*
+!auth/.gitkeep
+
+#Tests
+*test*
+
+#Docs
+docs/

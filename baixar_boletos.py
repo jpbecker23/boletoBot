@@ -1,9 +1,14 @@
 import os
-from bs4 import BeautifulSoup
 import requests
+
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 
 load_dotenv()
+
+TARGET_DIR = "boletos"
+
+os.makedirs(TARGET_DIR, exist_ok=True)
 
 BASE_URL = "https://aluno.uvv.br"
 
@@ -23,18 +28,45 @@ response = session.get(BOLETOS_URL)
 
 soup = BeautifulSoup(response.text, "html.parser")
 
-links = soup.find_all("a", title="Imprimir Boleto")
+rows = soup.find_all("tr")
 
-for link in links:
+for row in rows:
+    cols = row.find_all("td")
+
+    if len(cols) < 9:
+        continue
+
+    servico = cols[0].get_text(strip=True)
+    parcela = cols[1].get_text(strip=True)
+    vencimento = cols[6].get_text(strip=True)
+    status = cols[7].get_text(strip=True)
+
+    if status.lower() != "aberto":
+        continue
+
+    link = row.find("a", title="Imprimir Boleto")
+
+    if not link:
+        continue
+
     href = link["href"]
 
     boleto_url = BASE_URL + href
 
-    print(boleto_url)
+    boleto_response = session.get(boleto_url)
 
-# print(login_response.url)
-# print(login_response.status_code)
+    dia, mes, ano = vencimento.split("/")
+    vencimento_formatado = f"{ano}-{mes}-{dia}"
 
-boleto_response = session.get(boleto_url)
+    filename = f"{vencimento_formatado}_parcela-{parcela}.pdf"
 
-print(boleto_response.headers["Content-Type"])
+    savepath = os.path.join(TARGET_DIR, filename)
+
+    if os.path.exists(savepath):
+        print(f"{filename} já existe.")
+        continue
+
+    with open(savepath, "wb") as f:
+        f.write(boleto_response.content)
+
+    print(f"{filename} salvo com sucesso.")
