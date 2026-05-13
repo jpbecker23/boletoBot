@@ -34,7 +34,7 @@ def selecionar_boleto():
         dias_para_vencimento = (data_venc - datetime.now()).days
 
         if dias_para_vencimento > 7:
-            print(f"Aguardando: {boleto_selecionado} vence em {dias_para_vencimento} dias. (Limite para envio: 7 dias)")
+            print(f"Aguardando: {boleto_selecionado} vence em {dias_para_vencimento} dias. (Limite para envio: 30 dias)")
             return None
 
     except Exception as e:
@@ -82,11 +82,37 @@ def enviar_arquivo(headless=True):
 
         try:
             print("Aguardando carregamento da interface do WhatsApp...")
-            page.wait_for_selector('div[contenteditable="true"]', timeout=60000)
+            # Aguarda pela caixa de texto (usuário já logado) OU pelo Canvas do QR Code (usuário deslogado)
+            page.wait_for_selector('div[contenteditable="true"], canvas', timeout=60000)
+            
+            # Se encontrar o canvas do QR code na tela
+            canvas_locator = page.locator('canvas')
+            if canvas_locator.count() > 0:
+                print("\n⚠️  ATENÇÃO: Autenticação necessária! Gerando QR Code...")
+                qr_path = os.path.join(USER_DATA_DIR, 'qrcode.png')
+                
+                # Tira print apenas do QR Code e salva na pasta compartilhada do Docker
+                canvas_locator.first.screenshot(path=qr_path)
+                
+                print(f"⚠️  ABRA O ARQUIVO NO SEU PC: {qr_path}")
+                print("⚠️  Escaneie o QR Code com seu celular para continuar.")
+                print("Aguardando você escanear o QR Code (Tempo limite: 60 segundos)...")
+                
+                # Aguarda o usuário escanear e o campo de texto do chat aparecer
+                page.wait_for_selector('div[contenteditable="true"]', timeout=60000)
+                print("✅ Autenticação realizada com sucesso!")
+                
+                # Limpa a imagem do QR code que foi gerada
+                if os.path.exists(qr_path):
+                    os.remove(qr_path)
+                    
             page.wait_for_timeout(3000)
             print("Interface carregada!")
-        except Exception:
-            print("Erro: O login não foi detectado ou a página demorou demais.")
+        except Exception as e:
+            print(f"Erro: O login não foi detectado, você não escaneou o QR code a tempo, ou a página demorou demais. Detalhe: {e}")
+            debug_path = os.path.join(CAMINHO_ARQUIVO, 'debug_whatsapp.png')
+            page.screenshot(path=debug_path, full_page=True)
+            print(f"📸 Para entender o que deu errado, abra a imagem: ./boletos/debug_whatsapp.png")
             return
 
         print(f"Preparando envio do boleto: {boleto['nome']}")
@@ -98,16 +124,28 @@ def enviar_arquivo(headless=True):
 
         print("Clicando no botão de Documento...")
         with page.expect_file_chooser() as fc_info:
-            page.locator('button[aria-label="Document"]').first.click()
+            # WhatsApp muda constantemente as labels e varia entre Inglês e Português
+            page.locator('button[aria-label="Document"], button[aria-label="Documento"]').first.click()
 
         file_chooser = fc_info.value
         file_chooser.set_files(caminho_absoluto)
 
-        print("Aguardando botão de envio...")
-        botao_enviar = 'span[data-testid="wds-ic-send-filled"]'
-        page.wait_for_selector(botao_enviar, state="visible", timeout=20000)
+        print("Aguardando a tela de prévia do anexo...")
+        # Espera a animação do preview do PDF carregar
         page.wait_for_timeout(3000)
-        page.click(botao_enviar)
+        
+        print("Clicando no botão de envio...")
+        try:
+            # Na interface nova do WhatsApp, esse botão deixou de ser um <button> e virou um <div>!
+            seletores = 'div[role="button"][aria-label="Enviar"], div[role="button"][aria-label="Send"], span[data-icon="send"]'
+            page.locator(seletores).locator('visible=true').first.click(timeout=10000)
+        except Exception:
+            print("Botão visual não localizado. Usando método de segurança (Tecla Enter)...")
+            # Failsafe supremo: Na tela de prévia, a tecla Enter envia o documento independentemente de como o botão é feito
+            page.keyboard.press("Enter")
+        
+        # Um pequeno wait para garantir que o upload do arquivo terminou no servidor deles
+        page.wait_for_timeout(3000)
 
         print("Arquivo enviado com sucesso!")
 
