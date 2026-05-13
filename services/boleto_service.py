@@ -1,11 +1,19 @@
 import os
 import shutil
+from dataclasses import dataclass
 from datetime import datetime
 
 from core.config import CAMINHO_BOLETOS
 from core.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+@dataclass
+class BoletoInfo:
+    nome: str
+    caminho: str
+    pasta_enviados: str
 
 
 def listar_pendentes() -> list[str]:
@@ -19,7 +27,7 @@ def listar_pendentes() -> list[str]:
     return boletos
 
 
-def selecionar_boleto() -> dict | None:
+def selecionar_boleto() -> BoletoInfo | None:
     """
     Seleciona o próximo boleto a ser enviado.
 
@@ -28,21 +36,16 @@ def selecionar_boleto() -> dict | None:
     - Se faltar mais de 7 dias para o vencimento, não envia (retorna None)
     - Se o nome do arquivo não seguir o padrão esperado, envia por segurança (fallback)
 
-    Retorna dict com 'nome', 'caminho' e 'pasta_enviados', ou None se não houver boleto elegível.
+    Retorna BoletoInfo, ou None se não houver boleto elegível.
     """
-    if not (os.path.exists(CAMINHO_BOLETOS) and os.path.isdir(CAMINHO_BOLETOS)):
-        logger.error(f"O diretório {CAMINHO_BOLETOS} não foi encontrado.")
+    boletos = listar_pendentes()
+    if not boletos:
+        logger.info("Nenhum boleto pendente na pasta.")
         return None
 
     pasta_enviados = os.path.join(CAMINHO_BOLETOS, "enviados")
     os.makedirs(pasta_enviados, exist_ok=True)
 
-    boletos = [f for f in os.listdir(CAMINHO_BOLETOS) if f.endswith(".pdf")]
-    if not boletos:
-        logger.info("Nenhum boleto pendente na pasta.")
-        return None
-
-    boletos.sort()
     boleto_selecionado = boletos[0]
 
     try:
@@ -53,7 +56,7 @@ def selecionar_boleto() -> dict | None:
         if dias_para_vencimento > 7:
             logger.info(
                 f"Aguardando: {boleto_selecionado} vence em {dias_para_vencimento} dias. "
-                f"(Limite para envio: 30 dias)"
+                f"(Limite para envio: 7 dias)"
             )
             return None
 
@@ -63,11 +66,11 @@ def selecionar_boleto() -> dict | None:
         )
         logger.info("Enviando por segurança (fallback)...")
 
-    return {
-        "nome": boleto_selecionado,
-        "caminho": os.path.abspath(os.path.join(CAMINHO_BOLETOS, boleto_selecionado)),
-        "pasta_enviados": pasta_enviados,
-    }
+    return BoletoInfo(
+        nome=boleto_selecionado,
+        caminho=os.path.abspath(os.path.join(CAMINHO_BOLETOS, boleto_selecionado)),
+        pasta_enviados=pasta_enviados,
+    )
 
 
 def arquivar_boleto(caminho_origem: str, pasta_enviados: str, nome: str):

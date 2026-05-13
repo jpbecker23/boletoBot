@@ -1,5 +1,11 @@
 import os
+import sys
 from dotenv import load_dotenv
+
+# No PyInstaller, forçamos o Playwright a salvar o navegador em um local persistente
+# em vez da pasta temporária _MEI que é apagada ao fechar o app.
+if getattr(sys, 'frozen', False):
+    os.environ["PLAYWRIGHT_BROWSERS_PATH"] = os.path.join(os.getenv("LOCALAPPDATA", ""), "BoletoBot", "Browsers")
 
 # Carrega .env uma única vez para todo o projeto
 load_dotenv()
@@ -31,3 +37,13 @@ BROWSER_ARGS = ["--disable-blink-features=AutomationControlled"]
 
 # ── Docker / Modo contínuo ──
 INTERVALO_HORAS = os.getenv("INTERVALO_HORAS")
+
+# ── Timeouts (ms) ──
+TIMEOUT_CARREGAMENTO_WHATSAPP = 60000
+TIMEOUT_SCAN_QR = 60000
+TIMEOUT_ENVIO = 10000
+TIMEOUT_PREVIEW_ANEXO = 3000
+TIMEOUT_POS_ENVIO = 3000
+TIMEOUT_AUTENTICACAO_MANUAL = 120000
+TIMEOUT_FECHAMENTO = 5000
+TIMEOUT_MENU_ANEXO = 1000

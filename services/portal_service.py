@@ -26,7 +26,10 @@ def executar_download():
     }
 
     logger.info("Realizando login no portal...")
-    session.post(login_url, data=payload)
+    login_response = session.post(login_url, data=payload)
+    if login_response.status_code != 200 or "/Login" in login_response.url:
+        logger.error("Falha ao autenticar no portal UVV. Verifique matrícula e senha.")
+        return
 
     response = session.get(boletos_url)
     soup = BeautifulSoup(response.text, "html.parser")

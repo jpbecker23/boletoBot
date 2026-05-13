@@ -24,6 +24,9 @@ def rotina_principal():
         logger.info("Etapa 1: Baixando boletos no portal da instituição...")
         try:
             executar_download()
+            if not listar_pendentes():
+                logger.info("Nenhum boleto encontrado no portal ou na pasta. Encerrando.")
+                return False
         except Exception as e:
             logger.error(f"Falha ao baixar boletos: {e}")
             return False

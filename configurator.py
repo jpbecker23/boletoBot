@@ -3,7 +3,7 @@ import subprocess
 import sys
 import threading
 import customtkinter as ctk
-from dotenv import load_dotenv, set_key
+from dotenv import set_key
 
 from core.config import VERSION
 from services.whatsapp_service import enviar_boleto
@@ -20,9 +20,6 @@ class App(ctk.CTk):
         self.title(f"BoletoBot {VERSION} - Setup & Config")
         self.geometry("600x780")
 
-        load_dotenv()
-        self.check_playwright()
-
         # Layout
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -31,12 +28,10 @@ class App(ctk.CTk):
         self.main_frame.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         self.main_frame.grid_columnconfigure(0, weight=1)
 
-        self.title_label = ctk.CTkLabel(self.main_frame, text=f"BoletoBot {VERSION}", font=ctk.CTkFont(size=24, weight="bold"))
-        self.title_label.grid(row=0, column=0, padx=20, pady=(10, 5))
+        self.title_label = ctk.CTkLabel(self.main_frame, text="Automação de Boletos UVV", font=ctk.CTkFont(size=18, weight="bold"))
+        self.title_label.grid(row=0, column=0, padx=20, pady=(45, 20))
 
-        self.subtitle_label = ctk.CTkLabel(self.main_frame, text="Automação de Boletos UVV", font=ctk.CTkFont(size=14))
-        self.subtitle_label.grid(row=0, column=0, padx=20, pady=(45, 20))
-
+        # ═══ Campos de Configuração ═══
         # Registro de validação
         vcmd_matricula = (self.register(self.validate_matricula), "%P")
         vcmd_whatsapp = (self.register(self.validate_whatsapp), "%P")
@@ -55,7 +50,7 @@ class App(ctk.CTk):
         self.separator = ctk.CTkFrame(self.main_frame, height=2, fg_color="gray")
         self.separator.grid(row=10, column=0, padx=20, pady=10, sticky="ew")
 
-        # Ações
+        # ═══ Botões de Ação ═══
         self.actions_label = ctk.CTkLabel(self.main_frame, text="Ações de Automação", font=ctk.CTkFont(size=16, weight="bold"))
         self.actions_label.grid(row=11, column=0, padx=20, pady=(10, 10))
 
@@ -65,15 +60,32 @@ class App(ctk.CTk):
         self.schedule_button = ctk.CTkButton(self.main_frame, text="Agendar no Windows (10:00 AM)", fg_color="#2ecc71", hover_color="#27ae60", command=self.schedule_task)
         self.schedule_button.grid(row=13, column=0, padx=20, pady=5, sticky="ew")
 
-        # Console de Status
+        # ═══ Console de Status ═══
         self.status_box = ctk.CTkTextbox(self.main_frame, height=120)
         self.status_box.grid(row=14, column=0, padx=20, pady=(20, 0), sticky="nsew")
         self.log("BoletoBot iniciado. Configure seus dados acima.")
+        
+        # Iniciar verificação do playwright no background agora que a UI está pronta
+        self.check_playwright()
 
     def check_playwright(self):
-        # Verifica se o executável do playwright existe ou se o navegador está instalado
-        # Se estiver rodando como EXE, o sys.executable é o próprio EXE
-        pass
+        self.log("Verificando/Instalando navegador Chromium (Pode demorar na 1ª vez)...")
+        threading.Thread(target=self._install_playwright_bg, daemon=True).start()
+
+    def _install_playwright_bg(self):
+        try:
+            from playwright._impl._driver import compute_driver_executable, get_driver_env
+            driver_executable, driver_cli = compute_driver_executable()
+            env = get_driver_env()
+            if "PLAYWRIGHT_BROWSERS_PATH" in os.environ:
+                env["PLAYWRIGHT_BROWSERS_PATH"] = os.environ["PLAYWRIGHT_BROWSERS_PATH"]
+            
+            # Executa silenciosamente no background (esconde a janela preta no Windows)
+            creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            subprocess.run([driver_executable, driver_cli, "install", "chromium"], env=env, check=True, creationflags=creationflags)
+            self.after(0, lambda: self.log("✅ Navegador pronto para uso!"))
+        except Exception as e:
+            self.after(0, lambda: self.log(f"⚠️ Erro ao instalar navegador: {e}"))
 
     def validate_matricula(self, P):
         if P == "" or (P.isdigit() and len(P) <= 9):
@@ -142,13 +154,7 @@ class App(ctk.CTk):
             command_baixar = f'"{python_exe}" "{script_baixar}"'
             command_enviar = f'"{python_exe}" "{script_enviar}"'
 
-        # Criar script temporário de powershell para o agendador
-        ps_content = f"""
-$action1 = New-ScheduledTaskAction -Execute "{command_baixar.split(' ')[0].replace('"', '')}" -Argument "{' '.join(command_baixar.split(' ')[1:])}"
-$action2 = New-ScheduledTaskAction -Execute "{command_enviar.split(' ')[0].replace('"', '')}" -Argument "{' '.join(command_enviar.split(' ')[1:])}"
-$trigger = New-ScheduledTaskTrigger -Daily -At 10:00am
-Register-ScheduledTask -Action $action1, $action2 -Trigger $trigger -TaskName "BoletoBot_Automation" -Description "Automação de Boletos UVV" -Force
-"""
+        ps_content = self._gerar_script_agendamento(command_baixar, command_enviar)
         ps_path = os.path.join(os.getcwd(), "scripts", "temp_scheduler.ps1")
         os.makedirs(os.path.dirname(ps_path), exist_ok=True)
         with open(ps_path, "w") as f:
@@ -160,10 +166,17 @@ Register-ScheduledTask -Action $action1, $action2 -Trigger $trigger -TaskName "B
         except Exception as e:
             self.log(f"Erro ao agendar: {e}")
 
+    def _gerar_script_agendamento(self, command_baixar, command_enviar) -> str:
+        return f"""
+$action1 = New-ScheduledTaskAction -Execute "{command_baixar.split(' ')[0].replace('"', '')}" -Argument "{' '.join(command_baixar.split(' ')[1:])}"
+$action2 = New-ScheduledTaskAction -Execute "{command_enviar.split(' ')[0].replace('"', '')}" -Argument "{' '.join(command_enviar.split(' ')[1:])}"
+$trigger = New-ScheduledTaskTrigger -Daily -At 10:00am
+Register-ScheduledTask -Action $action1, $action2 -Trigger $trigger -TaskName "BoletoBot_Automation" -Description "Automação de Boletos UVV" -Force
+"""
+
 if __name__ == "__main__":
     # Lógica de Multiproc para o Executável Único
     if len(sys.argv) > 1:
-        load_dotenv()
         if "--enviar" in sys.argv:
             is_headless = "--visible" not in sys.argv
             enviar_boleto(headless=is_headless)
@@ -172,7 +185,12 @@ if __name__ == "__main__":
             executar_download()
             sys.exit(0)
         elif "--install-playwright" in sys.argv:
-            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"])
+            from playwright._impl._driver import compute_driver_executable, get_driver_env
+            driver_executable, driver_cli = compute_driver_executable()
+            env = get_driver_env()
+            if "PLAYWRIGHT_BROWSERS_PATH" in os.environ:
+                env["PLAYWRIGHT_BROWSERS_PATH"] = os.environ["PLAYWRIGHT_BROWSERS_PATH"]
+            subprocess.run([driver_executable, driver_cli, "install", "chromium"], env=env)
             sys.exit(0)
 
     app = App()

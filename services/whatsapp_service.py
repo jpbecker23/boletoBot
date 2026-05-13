@@ -2,7 +2,10 @@ import os
 from playwright.sync_api import sync_playwright
 
 from core.browser import create_context
-from core.config import CONTATO, CAMINHO_BOLETOS
+from core.config import (
+    CONTATO, CAMINHO_BOLETOS, USER_DATA_DIR,
+    TIMEOUT_FECHAMENTO, TIMEOUT_AUTENTICACAO_MANUAL
+)
 from core.logger import get_logger
 from pages.whatsapp_page import WhatsAppPage
 from services.boleto_service import selecionar_boleto, arquivar_boleto
@@ -42,7 +45,8 @@ def enviar_boleto(headless=True):
             # Se precisar autenticar (QR Code visível)
             if whatsapp.precisa_autenticacao():
                 logger.warning("⚠️  ATENÇÃO: Autenticação necessária! Gerando QR Code...")
-                qr_path = whatsapp.capturar_qr_code()
+                qr_path = os.path.join(USER_DATA_DIR, "qrcode.png")
+                whatsapp.capturar_qr_code(qr_path)
                 whatsapp.aguardar_scan_qr()
                 whatsapp.limpar_qr_code(qr_path)
 
@@ -59,16 +63,17 @@ def enviar_boleto(headless=True):
             return
 
         # Envio do boleto
-        logger.info(f"Preparando envio do boleto: {boleto['nome']}")
-        whatsapp.anexar_documento(boleto["caminho"])
+        logger.info(f"Preparando envio do boleto: {boleto.nome}")
+        whatsapp.anexar_documento(boleto.caminho)
         whatsapp.enviar_anexo()
         logger.info("Arquivo enviado com sucesso!")
 
         # Arquivamento
-        arquivar_boleto(boleto["caminho"], boleto["pasta_enviados"], boleto["nome"])
+        arquivar_boleto(boleto.caminho, boleto.pasta_enviados, boleto.nome)
 
         logger.info("Processo concluído. Fechando navegador em 5 segundos...")
-        whatsapp.aguardar(5000)
+        whatsapp.aguardar(TIMEOUT_FECHAMENTO)
+        context.close()
 
 
 def _abrir_para_autenticacao():
@@ -81,7 +86,8 @@ def _abrir_para_autenticacao():
         whatsapp.abrir_para_autenticacao()
         logger.info("Aguarde o carregamento e faça o login se necessário.")
         logger.info("O navegador fechará em 2 minutos ou quando você fechar a janela.")
-        whatsapp.aguardar(120000)
+        whatsapp.aguardar(TIMEOUT_AUTENTICACAO_MANUAL)
+        context.close()
 
 
 if __name__ == "__main__":

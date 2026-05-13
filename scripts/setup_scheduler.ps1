@@ -1,7 +1,7 @@
 $ProjectDir = Get-Location
 $PythonPath = "$ProjectDir\venv\Scripts\python.exe"
-$Script1 = "$ProjectDir\baixar_boletos.py"
-$Script2 = "$ProjectDir\enviar_boletos.py"
+$Script1 = "$ProjectDir\services\portal_service.py"
+$Script2 = "$ProjectDir\services\whatsapp_service.py"
 
 if (-not (Test-Path $PythonPath)) {
     Write-Error "Virtual environment not found at $PythonPath. Please run setup first."

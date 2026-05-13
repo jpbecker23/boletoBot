@@ -1,6 +1,13 @@
 import os
-from core.config import USER_DATA_DIR
 from core.logger import get_logger
+from core.config import (
+    TIMEOUT_CARREGAMENTO_WHATSAPP,
+    TIMEOUT_SCAN_QR,
+    TIMEOUT_MENU_ANEXO,
+    TIMEOUT_PREVIEW_ANEXO,
+    TIMEOUT_ENVIO,
+    TIMEOUT_POS_ENVIO
+)
 
 logger = get_logger(__name__)
 
@@ -36,7 +43,7 @@ class WhatsAppPage:
 
     # ── Carregamento e Autenticação ──
 
-    def aguardar_carregamento(self, timeout=60000):
+    def aguardar_carregamento(self, timeout=TIMEOUT_CARREGAMENTO_WHATSAPP):
         """Aguarda pelo campo de texto (logado) ou canvas do QR Code (deslogado)."""
         logger.info("Aguardando carregamento da interface do WhatsApp...")
         self.page.wait_for_selector(
@@ -47,15 +54,14 @@ class WhatsAppPage:
         """Retorna True se o QR Code está visível na tela (usuário deslogado)."""
         return self.page.locator(self.QR_CANVAS).count() > 0
 
-    def capturar_qr_code(self) -> str:
+    def capturar_qr_code(self, qr_path: str) -> str:
         """Faz screenshot do QR Code e retorna o caminho do arquivo gerado."""
-        qr_path = os.path.join(USER_DATA_DIR, "qrcode.png")
         self.page.locator(self.QR_CANVAS).first.screenshot(path=qr_path)
         logger.info(f"⚠️  ABRA O ARQUIVO NO SEU PC: {qr_path}")
         logger.info("⚠️  Escaneie o QR Code com seu celular para continuar.")
         return qr_path
 
-    def aguardar_scan_qr(self, timeout=60000):
+    def aguardar_scan_qr(self, timeout=TIMEOUT_SCAN_QR):
         """Aguarda o usuário escanear o QR Code (campo de texto aparece)."""
         logger.info(
             "Aguardando você escanear o QR Code (Tempo limite: 60 segundos)..."
@@ -74,7 +80,7 @@ class WhatsAppPage:
         """Abre o menu de anexos e seleciona o arquivo via file chooser."""
         logger.info("Abrindo menu de anexos...")
         self.page.locator(self.BTN_ANEXAR).first.click()
-        self.page.wait_for_timeout(1000)
+        self.page.wait_for_timeout(TIMEOUT_MENU_ANEXO)
 
         logger.info("Clicando no botão de Documento...")
         with self.page.expect_file_chooser() as fc_info:
@@ -86,7 +92,7 @@ class WhatsAppPage:
 
         logger.info("Aguardando a tela de prévia do anexo...")
         # Espera a animação do preview do PDF carregar
-        self.page.wait_for_timeout(3000)
+        self.page.wait_for_timeout(TIMEOUT_PREVIEW_ANEXO)
 
     def enviar_anexo(self):
         """Clica no botão de envio. Usa Enter como fallback de segurança."""
@@ -94,7 +100,7 @@ class WhatsAppPage:
         try:
             # Na interface nova do WhatsApp, esse botão deixou de ser um <button> e virou um <div>!
             self.page.locator(self.BTN_ENVIAR).locator("visible=true").first.click(
-                timeout=10000
+                timeout=TIMEOUT_ENVIO
             )
         except Exception:
             logger.warning(
@@ -104,7 +110,7 @@ class WhatsAppPage:
             self.page.keyboard.press("Enter")
 
         # Um pequeno wait para garantir que o upload do arquivo terminou no servidor deles
-        self.page.wait_for_timeout(3000)
+        self.page.wait_for_timeout(TIMEOUT_POS_ENVIO)
 
     # ── Debug ──
 
