@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  boletobot:
+    build: .
+    container_name: boletobot_worker
+    user: "${UID:-1000}:${GID:-1000}" # Roda como o SEU usuário Linux, não como root
+    env_file:
+      - .env
+    # Volumes mapeiam os dados persistentes entre as execuções
+    volumes:
+      # Mantém os PDFs sincronizados com o seu PC
+      - ./boletos:/app/boletos
+      # Persiste a sessão do WhatsApp, evitando que você precise escanear o QR Code de novo
+      - ./auth:/app/auth

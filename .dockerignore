@@ -1,0 +1,6 @@
+auth/
+boletos/
+venv/
+__pycache__/
+.env
+.git/
