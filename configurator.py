@@ -5,12 +5,9 @@ import threading
 import customtkinter as ctk
 from dotenv import load_dotenv, set_key
 
-# Importações dos scripts internos
-import enviar_boletos
-import baixar_boletos
-
-# Configurações do Projeto
-VERSION = "v0.2.0-beta"
+from core.config import VERSION
+from services.whatsapp_service import enviar_boleto
+from services.portal_service import executar_download
 
 # Configurações iniciais do CustomTkinter
 ctk.set_appearance_mode("dark")
@@ -125,7 +122,7 @@ class App(ctk.CTk):
             if getattr(sys, 'frozen', False):
                 subprocess.run([sys.executable, "--enviar", "--visible"], check=True)
             else:
-                enviar_boletos.enviar_arquivo(headless=False)
+                enviar_boleto(headless=False)
             self.log("Navegador fechado.")
         except Exception as e:
             self.log(f"Erro ao abrir WhatsApp: {e}")
@@ -140,8 +137,8 @@ class App(ctk.CTk):
             command_enviar = f'"{exe_path}" --enviar'
         else:
             python_exe = sys.executable
-            script_baixar = os.path.abspath("baixar_boletos.py")
-            script_enviar = os.path.abspath("enviar_boletos.py")
+            script_baixar = os.path.abspath("services/portal_service.py")
+            script_enviar = os.path.abspath("services/whatsapp_service.py")
             command_baixar = f'"{python_exe}" "{script_baixar}"'
             command_enviar = f'"{python_exe}" "{script_enviar}"'
 
@@ -169,10 +166,10 @@ if __name__ == "__main__":
         load_dotenv()
         if "--enviar" in sys.argv:
             is_headless = "--visible" not in sys.argv
-            enviar_boletos.enviar_arquivo(headless=is_headless)
+            enviar_boleto(headless=is_headless)
             sys.exit(0)
         elif "--baixar" in sys.argv:
-            baixar_boletos.executar_download()
+            executar_download()
             sys.exit(0)
         elif "--install-playwright" in sys.argv:
             subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"])
@@ -180,4 +177,3 @@ if __name__ == "__main__":
 
     app = App()
     app.mainloop()
-

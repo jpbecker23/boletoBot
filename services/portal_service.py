@@ -1,73 +1,75 @@
 import os
 import requests
-
-from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 
-load_dotenv()
+from core.config import MATRICULA, PASSWORD, BASE_URL_PORTAL, CAMINHO_BOLETOS
+from core.logger import get_logger
 
-TARGET_DIR = "boletos"
+logger = get_logger(__name__)
+
 
 def executar_download():
-    os.makedirs(TARGET_DIR, exist_ok=True)
-    
-    BASE_URL = "https://aluno.uvv.br"
-    LOGIN_URL = f"{BASE_URL}/Login"
-    BOLETOS_URL = f"{BASE_URL}/Aluno/Extrato"
-    
+    """
+    Realiza login HTTP no portal UVV, busca boletos com status 'aberto',
+    e baixa os PDFs para a pasta de boletos.
+    """
+    os.makedirs(CAMINHO_BOLETOS, exist_ok=True)
+
+    login_url = f"{BASE_URL_PORTAL}/Login"
+    boletos_url = f"{BASE_URL_PORTAL}/Aluno/Extrato"
+
     session = requests.Session()
-    
+
     payload = {
-        "Matricula": os.getenv("MATRICULA"),
-        "Password": os.getenv("PASSWORD")
+        "Matricula": MATRICULA,
+        "Password": PASSWORD,
     }
-    
-    print("Realizando login no portal...")
-    login_response = session.post(LOGIN_URL, data=payload)
-    
-    response = session.get(BOLETOS_URL)
+
+    logger.info("Realizando login no portal...")
+    session.post(login_url, data=payload)
+
+    response = session.get(boletos_url)
     soup = BeautifulSoup(response.text, "html.parser")
     rows = soup.find_all("tr")
-    
+
     count = 0
     for row in rows:
         cols = row.find_all("td")
         if len(cols) < 9:
             continue
-        
-        servico = cols[0].get_text(strip=True)
-        parcela = cols[1].get_text(strip=True)
+
         vencimento = cols[6].get_text(strip=True)
         status = cols[7].get_text(strip=True)
-        
+        parcela = cols[1].get_text(strip=True)
+
         if status.lower() != "aberto":
             continue
-            
+
         link = row.find("a", title="Imprimir Boleto")
         if not link:
             continue
-            
+
         href = link["href"]
-        boleto_url = BASE_URL + href
+        boleto_url = BASE_URL_PORTAL + href
         boleto_response = session.get(boleto_url)
-        
+
         dia, mes, ano = vencimento.split("/")
         vencimento_formatado = f"{ano}-{mes}-{dia}"
         filename = f"{vencimento_formatado}_parcela-{parcela}.pdf"
-        savepath = os.path.join(TARGET_DIR, filename)
-        
+        savepath = os.path.join(CAMINHO_BOLETOS, filename)
+
         if os.path.exists(savepath):
-            print(f"{filename} já existe.")
+            logger.info(f"{filename} já existe.")
             continue
-            
+
         with open(savepath, "wb") as f:
             f.write(boleto_response.content)
-        print(f"{filename} salvo com sucesso.")
+        logger.info(f"{filename} salvo com sucesso.")
         count += 1
-    
+
     if count == 0:
-        print("Nenhum novo boleto encontrado.")
+        logger.info("Nenhum novo boleto encontrado.")
+
 
 if __name__ == "__main__":
     executar_download()
-

@@ -1,56 +1,63 @@
-import os
 import sys
 import time
-import logging
-from baixar_boletos import executar_download
-from enviar_boletos import enviar_arquivo
 
-# Configuração básica de log para substituir prints isolados
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from core.config import CAMINHO_BOLETOS, INTERVALO_HORAS
+from core.logger import get_logger
+from services.boleto_service import listar_pendentes
+from services.portal_service import executar_download
+from services.whatsapp_service import enviar_boleto
+
+logger = get_logger(__name__)
+
 
 def rotina_principal():
-    logging.info("=== Iniciando rotina do boletoBot ===")
-    
-    caminho_boletos = os.getenv("ARQUIVO", "boletos")
-    boletos_pendentes = [f for f in os.listdir(caminho_boletos) if f.endswith('.pdf')] if os.path.exists(caminho_boletos) else []
-    
+    logger.info("=== Iniciando rotina do boletoBot ===")
+
+    boletos_pendentes = listar_pendentes()
+
     if boletos_pendentes:
-        logging.info(f"Etapa 1: Boleto pendente já encontrado na pasta ('{boletos_pendentes[0]}'). Ignorando navegação ao portal UVV.")
+        logger.info(
+            f"Etapa 1: Boleto pendente já encontrado na pasta ('{boletos_pendentes[0]}'). "
+            f"Ignorando navegação ao portal UVV."
+        )
     else:
-        logging.info("Etapa 1: Baixando boletos no portal da instituição...")
+        logger.info("Etapa 1: Baixando boletos no portal da instituição...")
         try:
             executar_download()
         except Exception as e:
-            logging.error(f"Falha ao baixar boletos: {e}")
+            logger.error(f"Falha ao baixar boletos: {e}")
             return False
-        
-    logging.info("Etapa 2: Enviando via WhatsApp Web...")
+
+    logger.info("Etapa 2: Enviando via WhatsApp Web...")
     try:
-        enviar_arquivo(headless=True)
+        enviar_boleto(headless=True)
     except Exception as e:
-        logging.error(f"Falha ao comunicar com o WhatsApp: {e}")
+        logger.error(f"Falha ao comunicar com o WhatsApp: {e}")
         return False
-        
-    logging.info("=== Rotina finalizada com sucesso! ===")
+
+    logger.info("=== Rotina finalizada com sucesso! ===")
     return True
 
+
 def main():
-    intervalo_str = os.getenv("INTERVALO_HORAS")
-    
     # Se a variável existir e for um número maior que zero, entra em modo loop (contínuo)
-    if intervalo_str and intervalo_str.isdigit() and int(intervalo_str) > 0:
-        horas = int(intervalo_str)
-        logging.info(f"MODO CONTÍNUO: O bot rodará em loop a cada {horas} hora(s). Para desligar, pare o container.")
+    if INTERVALO_HORAS and INTERVALO_HORAS.isdigit() and int(INTERVALO_HORAS) > 0:
+        horas = int(INTERVALO_HORAS)
+        logger.info(
+            f"MODO CONTÍNUO: O bot rodará em loop a cada {horas} hora(s). "
+            f"Para desligar, pare o container."
+        )
         while True:
             rotina_principal()
-            logging.info(f"Dormindo por {horas} hora(s)... O bot acordará no próximo ciclo.")
-            time.sleep(horas * 3600) # 3600 segundos = 1 hora
+            logger.info(f"Dormindo por {horas} hora(s)... O bot acordará no próximo ciclo.")
+            time.sleep(horas * 3600)  # 3600 segundos = 1 hora
     else:
-        # Execução padrão (róda apenas uma vez e se desliga)
-        logging.info("MODO ÚNICO: O bot rodará uma vez e o container será desligado.")
+        # Execução padrão (roda apenas uma vez e se desliga)
+        logger.info("MODO ÚNICO: O bot rodará uma vez e o container será desligado.")
         sucesso = rotina_principal()
         if not sucesso:
             sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
