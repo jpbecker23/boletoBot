@@ -73,40 +73,35 @@ boletoBot/
 ├── baixar_boletos.py     # Script HTTP de ingestão (portal -> boletos/)
 ├── enviar_boletos.py     # Script RPA de entrega (boletos/ -> WhatsApp)
 ├── configurator.py       # Interface gráfica de configuração (GUI)
-└── run_configurator.bat  # Atalho amigável para lançar o configurador
+├── run_configurator.bat  # Atalho amigável para lançar o configurador
+├── main.py               # Orquestrador unificado para rodar os scripts juntos
+├── Dockerfile            # Arquivo de construção da imagem Linux com Playwright
+└── docker-compose.yml    # Execução via contêiner mapeando as pastas necessárias
 ```
 
 # Como Funciona
 
-A lógica do projeto é dividida em dois scripts independentes que conversam através da pasta de arquivos. Isso é ótimo porque, se um lado der problema, o outro continua funcionando normalmente.
+A lógica do projeto é dividida em dois scripts independentes que conversam através da pasta de arquivos. O arquivo `main.py` serve como maestro unindo ambas as etapas.
 
 1. **Camada de Ingestão (`baixar_boletos.py`):** Realiza uma requisição "burra" e veloz, mantendo os cookies do servidor para autenticar no portal. Lê o HTML, encontra faturas pendentes e gera um PDF na pasta `boletos/`, utilizando como metadado a data limite no nome do arquivo.
-2. **Camada de Entrega (`enviar_boletos.py`):** Age como um robô persistente que lê a pasta de boletos. Avalia se o documento atual cruza o limite temporal definido. Caso afirmativo, ergue uma instância isolada do navegador com o login do WhatsApp já injetado, busca pelo campo de texto, faz o upload do anexo e encaminha o arquivo com segurança para a pasta `enviados/`.
+2. **Camada de Entrega (`enviar_boletos.py`):** Age como um robô persistente que lê a pasta de boletos. Avalia se o documento atual cruza o limite temporal definido. Caso afirmativo, ergue uma instância do navegador com o login do WhatsApp já injetado, anexa e encaminha o arquivo com segurança para a pasta `enviados/`.
 
-Essa separação garante resiliência: se o portal ficar offline, o bot ainda despacha arquivos que já foram baixados. Se a interface do WhatsApp mudar, a rotina de baixar novas faturas segue inalterada.
-
-# Setup
+# Setup Tradicional (Windows/Linux sem Docker)
 
 **1. Clone o repositório**
 ```bash
-git clone https://github.com/seu-usuario/boletoBot.git
+git clone https://github.com/jpbecker23/boletoBot.git
 cd boletoBot
 ```
 
 **2. Isole o ambiente**
-Crie e ative um ambiente virtual.
 ```bash
 python -m venv venv
-
-# Windows
-.\venv\Scripts\activate
-
-# Linux / macOS
-source venv/bin/activate
+# Windows: .\venv\Scripts\activate
+# Linux/macOS: source venv/bin/activate
 ```
 
 **3. Instale as dependências**
-Será necessário instalar as bibliotecas base e os binários da engine do Chromium.
 ```bash
 pip install -r requirements.txt
 playwright install chromium
@@ -118,11 +113,43 @@ O projeto conta com um arquivo `.env.example` que serve como modelo para a cria�
 **5. Primeiro login do robô**
 A primeira execução exigirá o pareamento da sua conta. Edite temporariamente o arquivo `enviar_boletos.py` para levantar o navegador sem a flag `headless`, rode o arquivo e escaneie o QR Code pelo seu celular. A sessão ficará gravada em `auth/`.
 
-**6. Automação (Windows Task Scheduler)**
-Para que o bot funcione de forma 100% autônoma, você pode criar uma tarefa no **Agendador de Tarefas do Windows**:
-- Configure o gatilho para rodar diariamente em um horário de sua preferência.
-- Na ação, aponte para o executável do Python dentro do seu ambiente virtual (`venv\Scripts\python.exe`).
-- Como argumento, passe o caminho dos scripts (`baixar_boletos.py` e `enviar_boletos.py`).
+**6. Automação e Agendamento**
+- No Windows: Use a interface `configurator.py` para agendar via Task Scheduler.
+- No Linux: Use o `crontab` para agendar a execução do arquivo `main.py` diariamente.
+
+---
+
+# Setup Avançado com Docker 🐳 (Recomendado para Servidores/Linux)
+
+A maneira mais resiliente de executar o robô no Linux (independente de versão do Python ou dependências de interface gráfica do Playwright) é através do Docker.
+
+**1. Configure o `.env`**
+Crie um arquivo `.env` na raiz (olhe o `.env.example`). Para rodar via Docker, deixe a variável `ARQUIVO` apontada nativamente para dentro do container:
+```env
+# O volume garantirá que essa pasta se reflita na sua raiz do host
+ARQUIVO=/app/boletos
+```
+
+**2. Opcional: Modo de loop contínuo**
+O bot pode rodar esporadicamente ou ficar em loop. Para ativar o loop no Docker, adicione ao seu `.env`:
+```env
+# Fará o bot dormir na memória e acordar sozinho a cada X horas
+INTERVALO_HORAS=24
+```
+
+**3. Suba o container**
+Na raiz do seu projeto, apenas execute:
+```bash
+docker compose up --build
+```
+*(Adicione a flag `-d` após as validações para rodar 100% solto em background e não travar o seu terminal)*
+
+**4. Escaneando o QR Code pelo Docker:**
+Na primeira execução, como será via terminal e invisível (headless), o container precisará do seu login no WhatsApp.
+- O robô automaticamente perceberá que o WhatsApp exigiu login e vai gerar um **print da tela do QR Code**.
+- Essa imagem surgirá magicamente no seu computador dentro da pasta `auth/qrcode.png`.
+- Abra a imagem, escaneie com seu celular. 
+- O container registrará sucesso, limpará a imagem e seguirá o processo normalmente. Na próxima vez graças ao container guardar os cookies logados na pasta `auth`, não será mais cobrado escanear de novo.
 
 # Configuração
 
@@ -150,5 +177,3 @@ Este projeto foi construído assumindo execução estrita em localhost ou infrae
 # Contribuição
 
 Irei tornar este projeto público a fim de ajudar outros alunos com a mesma dificuldade ou que apenas querem automatizar um processo chato e repetitivo. Caso você queira contribuir com o projeto, seja com uma feature nova ou uma fix abra uma Issue explicando, e sinta-se confortável para abrir um Pull Request. Melhorias arquiteturais também são muito bem-vindas. Agradeço a colaboração!
-
-
