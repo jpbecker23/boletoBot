@@ -9,6 +9,9 @@ from dotenv import load_dotenv, set_key
 import enviar_boletos
 import baixar_boletos
 
+# Configurações do Projeto
+VERSION = "v0.2.0-beta"
+
 # Configurações iniciais do CustomTkinter
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -17,8 +20,8 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("BoletoBot - Setup & Config")
-        self.geometry("600x750")
+        self.title(f"BoletoBot {VERSION} - Setup & Config")
+        self.geometry("600x780")
 
         load_dotenv()
         self.check_playwright()
@@ -31,8 +34,11 @@ class App(ctk.CTk):
         self.main_frame.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         self.main_frame.grid_columnconfigure(0, weight=1)
 
-        self.title_label = ctk.CTkLabel(self.main_frame, text="BoletoBot Configuration", font=ctk.CTkFont(size=24, weight="bold"))
-        self.title_label.grid(row=0, column=0, padx=20, pady=(10, 20))
+        self.title_label = ctk.CTkLabel(self.main_frame, text=f"BoletoBot {VERSION}", font=ctk.CTkFont(size=24, weight="bold"))
+        self.title_label.grid(row=0, column=0, padx=20, pady=(10, 5))
+
+        self.subtitle_label = ctk.CTkLabel(self.main_frame, text="Automação de Boletos UVV", font=ctk.CTkFont(size=14))
+        self.subtitle_label.grid(row=0, column=0, padx=20, pady=(45, 20))
 
         # Registro de validação
         vcmd_matricula = (self.register(self.validate_matricula), "%P")

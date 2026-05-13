@@ -5,8 +5,10 @@ import sys
 def build():
     print("Iniciando processo de build do BoletoBot...")
     
+    from configurator import VERSION
+    
     # Nome do executável final
-    exe_name = "BoletoBot"
+    exe_name = f"BoletoBot_{VERSION}"
     
     # Comando PyInstaller
     # --onefile: Gera um único arquivo .exe
@@ -15,7 +17,9 @@ def build():
     # --add-data: Adiciona arquivos extras que o programa precisa
     
     cmd = [
-        "pyinstaller",
+        sys.executable,
+        "-m",
+        "PyInstaller",
         "--noconfirm",
         "--onefile",
         "--windowed",
@@ -23,6 +27,7 @@ def build():
         "--collect-all=customtkinter",
         "--add-data=baixar_boletos.py;.",
         "--add-data=enviar_boletos.py;.",
+        "--add-data=main.py;.",
         "--add-data=.env.example;.",
         "configurator.py"
     ]
