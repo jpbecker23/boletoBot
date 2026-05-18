@@ -73,7 +73,10 @@ def enviar_boleto(headless=True):
 
         logger.info("Processo concluído. Fechando navegador em 5 segundos...")
         whatsapp.aguardar(TIMEOUT_FECHAMENTO)
-        context.close()
+        try:
+            context.close()
+        except Exception:
+            pass
 
 
 def _abrir_para_autenticacao():
@@ -87,7 +90,10 @@ def _abrir_para_autenticacao():
         logger.info("Aguarde o carregamento e faça o login se necessário.")
         logger.info("O navegador fechará em 2 minutos ou quando você fechar a janela.")
         whatsapp.aguardar(TIMEOUT_AUTENTICACAO_MANUAL)
-        context.close()
+        try:
+            context.close()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

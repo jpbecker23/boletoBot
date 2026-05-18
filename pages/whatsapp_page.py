@@ -46,13 +46,22 @@ class WhatsAppPage:
     def aguardar_carregamento(self, timeout=TIMEOUT_CARREGAMENTO_WHATSAPP):
         """Aguarda pelo campo de texto (logado) ou canvas do QR Code (deslogado)."""
         logger.info("Aguardando carregamento da interface do WhatsApp...")
-        self.page.wait_for_selector(
-            f"{self.CAMPO_TEXTO}, {self.QR_CANVAS}", timeout=timeout
-        )
+        try:
+            self.page.wait_for_selector(
+                f"{self.CAMPO_TEXTO}, {self.QR_CANVAS}", timeout=timeout
+            )
+        except Exception as e:
+            if "Target closed" in str(e):
+                logger.info("Navegador fechado durante o carregamento.")
+                return
+            raise e
 
     def precisa_autenticacao(self) -> bool:
         """Retorna True se o QR Code está visível na tela (usuário deslogado)."""
-        return self.page.locator(self.QR_CANVAS).count() > 0
+        try:
+            return self.page.locator(self.QR_CANVAS).count() > 0
+        except Exception:
+            return False
 
     def capturar_qr_code(self, qr_path: str) -> str:
         """Faz screenshot do QR Code e retorna o caminho do arquivo gerado."""
@@ -66,8 +75,14 @@ class WhatsAppPage:
         logger.info(
             "Aguardando você escanear o QR Code (Tempo limite: 60 segundos)..."
         )
-        self.page.wait_for_selector(self.CAMPO_TEXTO, timeout=timeout)
-        logger.info("✅ Autenticação realizada com sucesso!")
+        try:
+            self.page.wait_for_selector(self.CAMPO_TEXTO, timeout=timeout)
+            logger.info("✅ Autenticação realizada com sucesso!")
+        except Exception as e:
+            if "Target closed" in str(e):
+                logger.info("Navegador fechado durante o scan do QR Code.")
+                return
+            raise e
 
     def limpar_qr_code(self, qr_path: str):
         """Remove a imagem do QR Code gerada."""
@@ -80,7 +95,7 @@ class WhatsAppPage:
         """Abre o menu de anexos e seleciona o arquivo via file chooser."""
         logger.info("Abrindo menu de anexos...")
         self.page.locator(self.BTN_ANEXAR).first.click()
-        self.page.wait_for_timeout(TIMEOUT_MENU_ANEXO)
+        self.aguardar(TIMEOUT_MENU_ANEXO)
 
         logger.info("Clicando no botão de Documento...")
         with self.page.expect_file_chooser() as fc_info:
@@ -92,7 +107,7 @@ class WhatsAppPage:
 
         logger.info("Aguardando a tela de prévia do anexo...")
         # Espera a animação do preview do PDF carregar
-        self.page.wait_for_timeout(TIMEOUT_PREVIEW_ANEXO)
+        self.aguardar(TIMEOUT_PREVIEW_ANEXO)
 
     def enviar_anexo(self):
         """Clica no botão de envio. Usa Enter como fallback de segurança."""
@@ -110,17 +125,28 @@ class WhatsAppPage:
             self.page.keyboard.press("Enter")
 
         # Um pequeno wait para garantir que o upload do arquivo terminou no servidor deles
-        self.page.wait_for_timeout(TIMEOUT_POS_ENVIO)
+        self.aguardar(TIMEOUT_POS_ENVIO)
 
     # ── Debug ──
 
     def screenshot_debug(self, caminho: str):
         """Tira um screenshot full page para fins de debug."""
-        self.page.screenshot(path=caminho, full_page=True)
-        logger.info(f"📸 Para entender o que deu errado, abra a imagem: {caminho}")
+        try:
+            self.page.screenshot(path=caminho, full_page=True)
+            logger.info(f"📸 Para entender o que deu errado, abra a imagem: {caminho}")
+        except Exception:
+            # Se a página já fechou, não tem como tirar print
+            logger.warning("Não foi possível tirar screenshot de debug: Navegador já fechado.")
 
     # ── Utilitários ──
 
     def aguardar(self, ms: int):
         """Wrapper para wait_for_timeout do Playwright."""
-        self.page.wait_for_timeout(ms)
+        try:
+            self.page.wait_for_timeout(ms)
+        except Exception as e:
+            # Se o erro for de 'Target closed', ignoramos pois o usuário provavelmente fechou a janela
+            if "Target closed" in str(e) or "Target page, context or browser has been closed" in str(e):
+                logger.info("Navegador fechado pelo usuário durante a espera.")
+            else:
+                raise e
