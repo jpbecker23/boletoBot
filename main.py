@@ -33,7 +33,7 @@ def rotina_principal():
 
     logger.info("Etapa 2: Enviando via WhatsApp Web...")
     try:
-        enviar_boleto(headless=True)
+        enviar_boleto(headless=False)
     except Exception as e:
         logger.error(f"Falha ao comunicar com o WhatsApp: {e}")
         return False

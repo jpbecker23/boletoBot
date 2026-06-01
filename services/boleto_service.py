@@ -51,7 +51,7 @@ def selecionar_boleto() -> BoletoInfo | None:
     try:
         data_venc_str = boleto_selecionado.split("_")[0]
         data_venc = datetime.strptime(data_venc_str, "%Y-%m-%d")
-        dias_para_vencimento = (data_venc - datetime.now()).days
+        dias_para_vencimento = (data_venc.date() - datetime.now().date()).days
 
         if dias_para_vencimento > 7:
             logger.info(
