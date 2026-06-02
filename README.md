@@ -27,7 +27,8 @@ Conversando com um amigo percebi que o estado antigo do projeto não era muito a
 
 1.  **Baixe o Executável:** Vá na aba [**Releases**](https://github.com/jpbecker23/boletoBot/releases) do repositório e baixe a versão mais recente do `BoletoBot.exe`.
 2.  **Execute:** Coloque o arquivo em uma pasta de sua preferência e execute-o.
-    >[!WARNING] Como o executável não é assinado digitalmente, o Windows pode mostrar um aviso de "O Windows protegeu o seu computador" ao abrir pela primeira vez. Basta clicar em "Mais informações" e depois em "Executar assim mesmo".
+   >  [!WARNING]
+   > Como o executável não é assinado digitalmente, o Windows pode mostrar um aviso de "O Windows protegeu o seu computador" ao abrir pela primeira vez. Basta clicar em "Mais informações" e depois em "Executar assim mesmo".
 
 3.  **Configure:** Preencha seus dados de matrícula, senha e número do contato de quem vai recber o boleto na janela que abrirá.
 4.  **Vincule o WhatsApp:** Clique em "Vincular WhatsApp" para abrir o navegador e ler o QR Code (isso só é feito uma vez).
