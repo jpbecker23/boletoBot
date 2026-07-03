@@ -1,15 +1,14 @@
 $ProjectDir = Get-Location
 $PythonPath = "$ProjectDir\venv\Scripts\python.exe"
-$Script1 = "$ProjectDir\services\portal_service.py"
-$Script2 = "$ProjectDir\services\whatsapp_service.py"
+$Script = "$ProjectDir\main.py"
 
 if (-not (Test-Path $PythonPath)) {
     Write-Error "Virtual environment not found at $PythonPath. Please run setup first."
     exit 1
 }
 
-$ActionCommand = "cmd.exe"
-$ActionArguments = "/c `"$PythonPath`" `"$Script1`" && `"$PythonPath`" `"$Script2`""
+$ActionCommand = $PythonPath
+$ActionArguments = "`"$Script`""
 
 $Action = New-ScheduledTaskAction -Execute $ActionCommand -Argument $ActionArguments -WorkingDirectory $ProjectDir
 $Trigger = New-ScheduledTaskTrigger -Daily -At 10:00AM

@@ -52,18 +52,19 @@ def executar_download():
         if not link:
             continue
 
-        href = link["href"]
-        boleto_url = BASE_URL_PORTAL + href
-        boleto_response = session.get(boleto_url)
-
         dia, mes, ano = vencimento.split("/")
         vencimento_formatado = f"{ano}-{mes}-{dia}"
         filename = f"{vencimento_formatado}_parcela-{parcela}.pdf"
         savepath = os.path.join(CAMINHO_BOLETOS, filename)
+        enviados_path = os.path.join(CAMINHO_BOLETOS, "enviados", filename)
 
-        if os.path.exists(savepath):
-            logger.info(f"{filename} já existe.")
+        if os.path.exists(savepath) or os.path.exists(enviados_path):
+            logger.info(f"{filename} já existe (pendente ou enviado).")
             continue
+
+        href = link["href"]
+        boleto_url = BASE_URL_PORTAL + href
+        boleto_response = session.get(boleto_url)
 
         with open(savepath, "wb") as f:
             f.write(boleto_response.content)
