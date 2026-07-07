@@ -30,7 +30,7 @@ def enviar_boleto(headless=True):
         # Se não há boleto e modo visível, abre apenas para autenticação
         if not headless:
             _abrir_para_autenticacao()
-        return
+        return False
 
     with sync_playwright() as p:
         context = create_context(p, headless=headless)
@@ -60,7 +60,7 @@ def enviar_boleto(headless=True):
             )
             debug_path = os.path.join(CAMINHO_BOLETOS, "debug_whatsapp.png")
             whatsapp.screenshot_debug(debug_path)
-            return
+            return False
 
         # Envio do boleto
         logger.info(f"Preparando envio do boleto: {boleto.nome}")
@@ -77,6 +77,7 @@ def enviar_boleto(headless=True):
             context.close()
         except Exception:
             pass
+        return True
 
 
 def _abrir_para_autenticacao():

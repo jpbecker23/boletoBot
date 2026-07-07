@@ -26,20 +26,23 @@ def rotina_principal():
             executar_download()
             if not listar_pendentes():
                 logger.info("Nenhum boleto encontrado no portal ou na pasta. Encerrando.")
-                return False
+                return "NO_BOLETOS"
         except Exception as e:
             logger.error(f"Falha ao baixar boletos: {e}")
-            return False
+            return "ERROR"
 
     logger.info("Etapa 2: Enviando via WhatsApp Web...")
     try:
-        enviar_boleto(headless=False)
+        sucesso_envio = enviar_boleto(headless=False)
+        if not sucesso_envio:
+            logger.error("Falha no fluxo de envio do boleto.")
+            return "ERROR"
     except Exception as e:
         logger.error(f"Falha ao comunicar com o WhatsApp: {e}")
-        return False
+        return "ERROR"
 
     logger.info("=== Rotina finalizada com sucesso! ===")
-    return True
+    return "SUCCESS"
 
 
 def main():
@@ -57,9 +60,11 @@ def main():
     else:
         # Execução padrão (roda apenas uma vez e se desliga)
         logger.info("MODO ÚNICO: O bot rodará uma vez e o container será desligado.")
-        sucesso = rotina_principal()
-        if not sucesso:
+        status = rotina_principal()
+        if status == "ERROR":
             sys.exit(1)
+        else:
+            sys.exit(0)
 
 
 if __name__ == "__main__":
