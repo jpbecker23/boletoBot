@@ -1,7 +1,7 @@
 
 # boletoBot
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?logo=playwright&logoColor=white)
 ![GitHub last commit](https://img.shields.io/github/last-commit/jpbecker23/boletoBot)
 ![GitHub repo size](https://img.shields.io/github/repo-size/jpbecker23/boletoBot)
@@ -21,26 +21,27 @@ A automação atualmente acessa o portal do aluno, identifica se há faturas pen
 # Configuração Rápida para Usuários não programadores
 
 > [!IMPORTANT]
-> Caso você prefira o modo tradicional com linha de comando, pode ignorar esta seção e [ir direto para o Setup](#setup).
+> Caso você prefira o modo tradicional com linha de comando, pode ignorar esta seção e [ir direto para o Setup](#setup-tradicional-windowslinux-sem-docker).
 
-Conversando com um amigo percebi que o estado antigo do projeto não era muito amigavável com pessoas que não são familiarizadas com programação. Por isso, atualizei o projeto para que ele seja de fácil uso para qualquer pessoa, implementei uma janela de configuração simples e direta para inserir as informações necessárias e agendar o bot.
+Conversando com um amigo percebi que o estado antigo do projeto não era muito amigável com pessoas que não são familiarizadas com programação. Por isso, atualizei o projeto para que ele seja de fácil uso para qualquer pessoa, implementei uma janela de configuração simples e direta para inserir as informações necessárias e agendar o bot.
 
-1.  **Baixe o Executável:** Vá na aba [**Releases**](https://github.com/jpbecker23/boletoBot/releases) do repositório e baixe a versão mais recente do `BoletoBot.exe`.
-2.  **Execute:** Coloque o arquivo em uma pasta de sua preferência e execute-o.
+1.  **Baixe o Executável:** Vá na aba [**Releases**](https://github.com/jpbecker23/boletoBot/releases) do repositório e baixe a versão mais recente do executável (`BoletoBot_vX.Y.Z.exe`).
+2.  **Execute:** Coloque o arquivo em uma pasta de sua preferência e execute-o. O `.env`, a sessão do WhatsApp (`auth/`), os boletos e os logs serão criados nessa mesma pasta.
    >  [!WARNING]
    > Como o executável não é assinado digitalmente, o Windows pode mostrar um aviso de "O Windows protegeu o seu computador" ao abrir pela primeira vez. Basta clicar em "Mais informações" e depois em "Executar assim mesmo".
 
-3.  **Configure:** Preencha seus dados de matrícula, senha e número do contato de quem vai recber o boleto na janela que abrirá.
+3.  **Configure:** Preencha seus dados de matrícula, senha e número do contato de quem vai receber o boleto na janela que abrirá.
 4.  **Vincule o WhatsApp:** Clique em "Vincular WhatsApp" para abrir o navegador e ler o QR Code (isso só é feito uma vez).
 5.  **Agende:** Clique em "Agendar no Windows" para que o robô trabalhe para você todos os dias às 10:00.
 
 # Stack
-- **Linguagem:** Python 3.x
+- **Linguagem:** Python 3.10+
 - **Interface Gráfica (GUI):** `customtkinter` para uma experiência de configuração moderna e intuitiva.
 - **Extração de Dados:** `requests` para sessão HTTP estática e `beautifulsoup4` para estruturação e extração das tabelas HTML.
 - **Automação de UI (RPA):** `playwright` com Chromium para a operação da interface do WhatsApp Web.
 - **Configuração:** `python-dotenv` para injeção limpa de credenciais locais.
 - **Automação de Sistema:** PowerShell para integração e agendamento automático de tarefas no Windows.
+- **Testes:** `pytest`.
 
 # Estrutura do Projeto
 
@@ -51,6 +52,7 @@ boletoBot/
 ├── auth/                 # Pasta autogerada: armazena cookies e sessão ativa do WhatsApp
 ├── boletos/              # Staging area: PDFs aguardando regra de data para envio
 │   └── enviados/         # Arquivo morto: faturas já processadas e enviadas
+├── logs/                 # Pasta autogerada: histórico de execuções (boletobot.log, com rotação)
 ├── core/                 # Configurações do sistema, instanciador de browser e logger unificado
 │   ├── browser.py
 │   ├── config.py
@@ -63,11 +65,14 @@ boletoBot/
 │   └── whatsapp_service.py # Orquestração do fluxo de envio via WhatsApp Web
 ├── scripts/              # Scripts de suporte e automação (PowerShell para Windows Task Scheduler)
 │   └── setup_scheduler.ps1
+├── tests/                # Testes unitários (regra de envio e leitura do extrato)
 ├── venv/                 # Ambiente virtual
 ├── .env                  # Variáveis de ambiente e segredos
 ├── configurator.py       # Interface gráfica de configuração (GUI)
 ├── run_configurator.bat  # Atalho amigável para lançar o configurador
-├── main.py               # Orquestrador unificado de rotina principal
+├── main.py               # Ponto de entrada único da rotina (e --vincular para o QR Code)
+├── requirements.txt      # Dependências de execução (versões fixadas)
+├── requirements-dev.txt  # Dependências de desenvolvimento (pytest, pyinstaller)
 ├── Dockerfile            # Arquivo de construção da imagem Linux com Playwright
 └── docker-compose.yml    # Execução via contêiner mapeando as pastas necessárias
 ```
@@ -78,8 +83,10 @@ A rotina principal é orquestrada pelo arquivo `main.py` e executa as seguintes 
 
 1. **Varredura e Ingestão (`portal_service.py`):** Realiza uma requisição HTTP veloz usando `requests` e mantendo os cookies do servidor para autenticar no portal UVV. Lê o HTML do extrato, identifica as parcelas com status `"aberto"` e baixa o boleto em formato PDF para a pasta `boletos/`, salvando o arquivo no formato `AAAA-MM-DD_parcela-X.pdf`.
 2. **Seleção Inteligente (`boleto_service.py`):** Analisa a pasta `boletos/`. Se houver algum boleto cuja data de vencimento falte **7 dias ou menos** (calculado de forma precisa com base na data do dia), ele é selecionado para envio.
-3. **Entrega via WhatsApp Web (`whatsapp_service.py`):** Utiliza o `playwright` em modo headless (ou visível se configurado) com a sessão persistente de cookies salva em `auth/`. O robô abre a conversa com o contato definido, anexa o PDF do boleto e o envia.
-4. **Arquivamento e Idempotência (`boleto_service.py`):** Assim que o envio é realizado com sucesso, o arquivo PDF correspondente é movido para a pasta `boletos/enviados/`, garantindo que não haja envios duplicados.
+3. **Entrega via WhatsApp Web (`whatsapp_service.py`):** Utiliza o `playwright` com a sessão persistente salva em `auth/` (navegador visível por padrão, ou sem janela com `HEADLESS=true`). O robô abre a conversa com o contato definido, anexa o PDF do boleto, envia e aguarda o ✓ de envio na conversa.
+4. **Arquivamento e Idempotência (`boleto_service.py`):** Somente após o envio ser confirmado, o PDF é movido para a pasta `boletos/enviados/`, garantindo que não haja envios duplicados. Se o envio não for confirmado, o boleto continua pendente e será reenviado na próxima execução.
+
+Cada execução termina com código `0` (sucesso ou nada a fazer) ou `1` (falha real, como senha incorreta no portal ou envio não confirmado), o que fica visível no Agendador de Tarefas do Windows. O histórico detalhado fica em `logs/boletobot.log`.
 
 # Setup Tradicional (Windows/Linux sem Docker)
 
@@ -89,7 +96,7 @@ git clone https://github.com/jpbecker23/boletoBot.git
 cd boletoBot
 ```
 
-**2. Isole o ambiente**
+**2. Isole o ambiente** (requer Python 3.10 ou superior)
 ```bash
 python -m venv venv
 # Windows: .\venv\Scripts\activate
@@ -116,6 +123,12 @@ Os dados da sua sessão de login serão gravados na pasta `auth/` para as próxi
 - No Windows: Use a interface `configurator.py` para agendar via Task Scheduler ou execute o script `scripts/setup_scheduler.ps1` no PowerShell.
 - No Linux: Use o `crontab` para agendar a execução do arquivo `main.py` diariamente.
 
+**7. Testes (opcional)**
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
 ---
 
 # Setup Avançado com Docker 🐳 (Recomendado para Servidores/Linux)
@@ -123,10 +136,11 @@ Os dados da sua sessão de login serão gravados na pasta `auth/` para as próxi
 A maneira mais resiliente de executar o robô no Linux (independente de versão do Python ou dependências de interface gráfica do Playwright) é através do Docker.
 
 **1. Configure o `.env`**
-Crie um arquivo `.env` na raiz (olhe o `.env.example`). Para rodar via Docker, deixe a variável `ARQUIVO` apontada nativamente para dentro do container:
+Crie um arquivo `.env` na raiz (olhe o `.env.example`). Para rodar via Docker, deixe a variável `ARQUIVO` apontada nativamente para dentro do container e ative o modo sem janela (o container não possui tela):
 ```env
 # O volume garantirá que essa pasta se reflita na sua raiz do host
 ARQUIVO=/app/boletos
+HEADLESS=true
 ```
 
 **2. Opcional: Modo de loop contínuo**
@@ -162,8 +176,16 @@ PASSWORD=sua_senha_aqui
 # Destinatário do bot (Seu número com DDD, formato DDI+DDD)
 CONTATO=5511999999999
 
-# Caminho absoluto da pasta de transição no seu SO
+# (Opcional) Pasta dos boletos. Padrão: boletos/ dentro da pasta do projeto.
+# Caminhos relativos são resolvidos a partir da pasta do projeto.
 ARQUIVO=C:\Caminhos\Absolutos\Ate\boletoBot\boletos
+
+# (Opcional) Executa o navegador sem janela. Padrão: false. Obrigatório "true" no Docker.
+HEADLESS=false
+
+# (Opcional, recomendado apenas no Docker) Mantém o bot em loop, rodando a cada X horas.
+# Se omitido, o bot roda uma vez e encerra (ideal para o Agendador de Tarefas/cron).
+INTERVALO_HORAS=24
 ```
 # Segurança
 

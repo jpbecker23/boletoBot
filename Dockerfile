@@ -1,5 +1,6 @@
-# Imagem oficial do Playwright que já contém todas as dependências de SO para rodar browsers
-FROM mcr.microsoft.com/playwright/python:v1.43.0-jammy
+# Imagem oficial do Playwright que já contém todas as dependências de SO para rodar browsers.
+# A versão da imagem deve ser a mesma do pacote playwright no requirements.txt.
+FROM mcr.microsoft.com/playwright/python:v1.59.0-noble
 
 # Define o diretório de trabalho no container
 WORKDIR /app

@@ -20,7 +20,7 @@ ENV_PATH = os.path.join(BASE_DIR, ".env")
 load_dotenv(ENV_PATH)
 
 # ── Versão do Projeto ──
-VERSION = "v0.2.0-beta"
+VERSION = "v1.0.0"
 
 # ── Credenciais do Portal UVV ──
 MATRICULA = os.getenv("MATRICULA")
