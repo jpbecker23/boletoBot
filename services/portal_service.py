@@ -8,11 +8,20 @@ from core.logger import get_logger
 logger = get_logger(__name__)
 
 
+class PortalAuthError(Exception):
+    """Falha de autenticação no portal (credenciais inválidas ou sessão rejeitada)."""
+
+
 def executar_download():
     """
     Realiza login HTTP no portal UVV, busca boletos com status 'aberto',
     e baixa os PDFs para a pasta de boletos.
+
+    Levanta PortalAuthError se o login falhar.
     """
+    if not MATRICULA or not PASSWORD:
+        raise PortalAuthError("MATRICULA e/ou PASSWORD não configurados no .env.")
+
     os.makedirs(CAMINHO_BOLETOS, exist_ok=True)
 
     login_url = f"{BASE_URL_PORTAL}/Login"
@@ -28,10 +37,15 @@ def executar_download():
     logger.info("Realizando login no portal...")
     login_response = session.post(login_url, data=payload)
     if login_response.status_code != 200 or "/Login" in login_response.url:
-        logger.error("Falha ao autenticar no portal UVV. Verifique matrícula e senha.")
-        return
+        raise PortalAuthError(
+            "Falha ao autenticar no portal UVV. Verifique matrícula e senha."
+        )
 
     response = session.get(boletos_url)
+    if "/Login" in response.url:
+        raise PortalAuthError(
+            "Portal redirecionou para o login ao acessar o extrato. Sessão não foi aceita."
+        )
     soup = BeautifulSoup(response.text, "html.parser")
     rows = soup.find_all("tr")
 
