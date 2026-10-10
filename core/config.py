@@ -7,8 +7,17 @@ from dotenv import load_dotenv
 if getattr(sys, 'frozen', False):
     os.environ["PLAYWRIGHT_BROWSERS_PATH"] = os.path.join(os.getenv("LOCALAPPDATA", ""), "BoletoBot", "Browsers")
 
+# Raiz do projeto (ou pasta do executável). Todos os caminhos partem daqui para não
+# depender da pasta de trabalho, que no Task Scheduler é C:\Windows\System32.
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+ENV_PATH = os.path.join(BASE_DIR, ".env")
+
 # Carrega .env uma única vez para todo o projeto
-load_dotenv()
+load_dotenv(ENV_PATH)
 
 # ── Versão do Projeto ──
 VERSION = "v0.2.0-beta"
@@ -21,8 +30,8 @@ PASSWORD = os.getenv("PASSWORD")
 CONTATO = os.getenv("CONTATO")
 
 # ── Caminhos ──
-CAMINHO_BOLETOS = os.getenv("ARQUIVO", "boletos")
-USER_DATA_DIR = "./auth"
+CAMINHO_BOLETOS = os.path.join(BASE_DIR, os.getenv("ARQUIVO") or "boletos")
+USER_DATA_DIR = os.path.join(BASE_DIR, "auth")
 
 # ── Portal UVV ──
 BASE_URL_PORTAL = "https://aluno.uvv.br"

@@ -108,7 +108,7 @@ O projeto conta com um arquivo `.env.example` que serve como modelo para a cria�
 **5. Primeiro login do robô**
 A primeira execução do WhatsApp exigirá o pareamento da sua conta (escaneamento do QR Code).
 - **Via Interface Gráfica**: Execute `python configurator.py` e clique em **Vincular WhatsApp** para ler o QR Code de forma assistida.
-- **Via Linha de Comando**: Você pode executar `python services/whatsapp_service.py --visible` para abrir o navegador de forma visível e realizar o login manual pelo QR Code.
+- **Via Linha de Comando**: Você pode executar `python main.py --vincular` para abrir o navegador de forma visível e realizar o login manual pelo QR Code.
 
 Os dados da sua sessão de login serão gravados na pasta `auth/` para as próximas execuções.
 

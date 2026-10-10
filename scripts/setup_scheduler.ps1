@@ -1,4 +1,4 @@
-$ProjectDir = Get-Location
+$ProjectDir = Split-Path -Parent $PSScriptRoot
 $PythonPath = "$ProjectDir\venv\Scripts\python.exe"
 $Script = "$ProjectDir\main.py"
 

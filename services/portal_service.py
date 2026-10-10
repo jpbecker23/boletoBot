@@ -87,7 +87,3 @@ def executar_download():
 
     if count == 0:
         logger.info("Nenhum novo boleto encontrado.")
-
-
-if __name__ == "__main__":
-    executar_download()

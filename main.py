@@ -1,11 +1,11 @@
 import sys
 import time
 
-from core.config import CAMINHO_BOLETOS, INTERVALO_HORAS
+from core.config import INTERVALO_HORAS
 from core.logger import get_logger
 from services.boleto_service import listar_pendentes
 from services.portal_service import executar_download
-from services.whatsapp_service import ResultadoEnvio, enviar_boleto
+from services.whatsapp_service import ResultadoEnvio, abrir_para_autenticacao, enviar_boleto
 
 logger = get_logger(__name__)
 
@@ -49,6 +49,10 @@ def rotina_principal():
 
 
 def main():
+    if "--vincular" in sys.argv:
+        abrir_para_autenticacao()
+        sys.exit(0)
+
     # Se a variável existir e for um número maior que zero, entra em modo loop (contínuo)
     if INTERVALO_HORAS and INTERVALO_HORAS.isdigit() and int(INTERVALO_HORAS) > 0:
         horas = int(INTERVALO_HORAS)

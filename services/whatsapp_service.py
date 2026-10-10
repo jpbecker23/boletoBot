@@ -106,11 +106,3 @@ def abrir_para_autenticacao():
             context.close()
         except Exception:
             pass
-
-
-if __name__ == "__main__":
-    import sys
-    if "--vincular" in sys.argv:
-        abrir_para_autenticacao()
-    else:
-        enviar_boleto(headless=HEADLESS and "--visible" not in sys.argv)

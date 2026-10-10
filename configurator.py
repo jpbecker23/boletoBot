@@ -1,3 +1,4 @@
+import base64
 import os
 import subprocess
 import sys
@@ -5,9 +6,9 @@ import threading
 import customtkinter as ctk
 from dotenv import set_key
 
-from core.config import HEADLESS, VERSION
-from services.whatsapp_service import abrir_para_autenticacao, enviar_boleto
-from services.portal_service import executar_download
+from core.config import BASE_DIR, CAMINHO_BOLETOS, ENV_PATH, VERSION
+from main import main as executar_rotina
+from services.whatsapp_service import abrir_para_autenticacao
 
 # Configurações iniciais do CustomTkinter
 ctk.set_appearance_mode("dark")
@@ -40,7 +41,7 @@ class App(ctk.CTk):
         self.matricula_entry = self.create_input("Matrícula (UVV):", os.getenv("MATRICULA", ""), 1, validate="key", validatecommand=vcmd_matricula)
         self.password_entry = self.create_input("Senha (UVV):", os.getenv("PASSWORD", ""), 2, show="*")
         self.contato_entry = self.create_input("WhatsApp (Ex: 5527999999999):", os.getenv("CONTATO", ""), 3, validate="key", validatecommand=vcmd_whatsapp)
-        self.arquivo_entry = self.create_input("Pasta dos Boletos (Caminho):", os.getenv("ARQUIVO", os.path.join(os.getcwd(), "boletos")), 4)
+        self.arquivo_entry = self.create_input("Pasta dos Boletos (Caminho):", CAMINHO_BOLETOS, 4)
 
         # Botão de Salvar
         self.save_button = ctk.CTkButton(self.main_frame, text="Salvar Configuração", command=self.save_config)
@@ -110,15 +111,14 @@ class App(ctk.CTk):
         self.status_box.see("end")
 
     def save_config(self):
-        env_path = ".env"
-        if not os.path.exists(env_path):
-            with open(env_path, "w") as f:
+        if not os.path.exists(ENV_PATH):
+            with open(ENV_PATH, "w") as f:
                 f.write("")
 
-        set_key(env_path, "MATRICULA", self.matricula_entry.get())
-        set_key(env_path, "PASSWORD", self.password_entry.get())
-        set_key(env_path, "CONTATO", self.contato_entry.get())
-        set_key(env_path, "ARQUIVO", self.arquivo_entry.get())
+        set_key(ENV_PATH, "MATRICULA", self.matricula_entry.get())
+        set_key(ENV_PATH, "PASSWORD", self.password_entry.get())
+        set_key(ENV_PATH, "CONTATO", self.contato_entry.get())
+        set_key(ENV_PATH, "ARQUIVO", self.arquivo_entry.get())
 
         self.log("Configurações salvas no arquivo .env!")
 
@@ -141,37 +141,38 @@ class App(ctk.CTk):
 
     def schedule_task(self):
         self.log("Agendando tarefa no Windows...")
-        # Define o comando que será agendado
         if getattr(sys, 'frozen', False):
-            # Se for EXE, o agendador chama o EXE com flags
-            exe_path = sys.executable
-            command_baixar = f'"{exe_path}" --baixar'
-            command_enviar = f'"{exe_path}" --enviar'
+            executavel, argumentos = sys.executable, "--executar"
         else:
-            python_exe = sys.executable
-            script_baixar = os.path.abspath("services/portal_service.py")
-            script_enviar = os.path.abspath("services/whatsapp_service.py")
-            command_baixar = f'"{python_exe}" "{script_baixar}"'
-            command_enviar = f'"{python_exe}" "{script_enviar}"'
+            executavel = sys.executable
+            argumentos = f'"{os.path.join(BASE_DIR, "main.py")}"'
 
-        ps_content = self._gerar_script_agendamento(command_baixar, command_enviar)
-        ps_path = os.path.join(os.getcwd(), "scripts", "temp_scheduler.ps1")
-        os.makedirs(os.path.dirname(ps_path), exist_ok=True)
-        with open(ps_path, "w") as f:
-            f.write(ps_content)
-
-        try:
-            subprocess.run(["powershell.exe", "-ExecutionPolicy", "Bypass", "-File", ps_path], check=True, capture_output=True)
+        script = self._gerar_script_agendamento(executavel, argumentos)
+        # -EncodedCommand evita problemas de aspas/espaços nos caminhos
+        script_codificado = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
+        resultado = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", script_codificado],
+            capture_output=True, text=True,
+        )
+        if resultado.returncode == 0:
             self.log("Sucesso: Tarefa agendada para às 10:00 todos os dias!")
-        except Exception as e:
-            self.log(f"Erro ao agendar: {e}")
+        else:
+            self.log(f"Erro ao agendar: {resultado.stderr.strip()}")
 
-    def _gerar_script_agendamento(self, command_baixar, command_enviar) -> str:
+    @staticmethod
+    def _gerar_script_agendamento(executavel: str, argumentos: str) -> str:
+        def literal(valor: str) -> str:
+            return "'" + valor.replace("'", "''") + "'"
+
         return f"""
-$action1 = New-ScheduledTaskAction -Execute "{command_baixar.split(' ')[0].replace('"', '')}" -Argument "{' '.join(command_baixar.split(' ')[1:])}"
-$action2 = New-ScheduledTaskAction -Execute "{command_enviar.split(' ')[0].replace('"', '')}" -Argument "{' '.join(command_enviar.split(' ')[1:])}"
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+# Remove a tarefa das versões anteriores do configurador, que tinha outro nome
+Unregister-ScheduledTask -TaskName 'BoletoBot_Automation' -Confirm:$false -ErrorAction SilentlyContinue
+$action = New-ScheduledTaskAction -Execute {literal(executavel)} -Argument {literal(argumentos)} -WorkingDirectory {literal(BASE_DIR)}
 $trigger = New-ScheduledTaskTrigger -Daily -At 10:00am
-Register-ScheduledTask -Action $action1, $action2 -Trigger $trigger -TaskName "BoletoBot_Automation" -Description "Automação de Boletos UVV" -Force
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+Register-ScheduledTask -TaskName 'BoletoBot_Daily' -Action $action -Trigger $trigger -Settings $settings -Description 'Automação de Boletos UVV (BoletoBot)' -Force | Out-Null
 """
 
 if __name__ == "__main__":
@@ -180,12 +181,8 @@ if __name__ == "__main__":
         if "--vincular" in sys.argv:
             abrir_para_autenticacao()
             sys.exit(0)
-        elif "--enviar" in sys.argv:
-            enviar_boleto(headless=HEADLESS and "--visible" not in sys.argv)
-            sys.exit(0)
-        elif "--baixar" in sys.argv:
-            executar_download()
-            sys.exit(0)
+        elif "--executar" in sys.argv:
+            executar_rotina()
         elif "--install-playwright" in sys.argv:
             from playwright._impl._driver import compute_driver_executable, get_driver_env
             driver_executable, driver_cli = compute_driver_executable()
