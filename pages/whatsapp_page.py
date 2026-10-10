@@ -35,6 +35,7 @@ class WhatsAppPage:
     )
     # Reserva: "Documento" é hoje o primeiro item do menu de anexos
     ITEM_MENU_ANEXO = '[role="menuitem"]'
+    MENSAGEM = '#main [data-testid="msg-container"]'
     BTN_ENVIAR = (
         'span[data-icon="wds-ic-send-filled"], '
         'span[data-icon="send"], '
@@ -131,6 +132,8 @@ class WhatsAppPage:
 
     def enviar_anexo(self):
         """Clica no botão de envio. Usa Enter como fallback de segurança."""
+        # Marca a última mensagem atual para que só uma mensagem nova confirme o envio
+        self.page.evaluate(_JS_MARCAR_ULTIMA_MENSAGEM, self.MENSAGEM)
         logger.info("Clicando no botão de envio...")
         try:
             # Na interface nova do WhatsApp, esse botão deixou de ser um <button> e virou um <div>!
@@ -144,30 +147,29 @@ class WhatsAppPage:
             # Failsafe supremo: Na tela de prévia, a tecla Enter envia o documento
             self.page.keyboard.press("Enter")
 
-    def confirmar_envio(self, nome_arquivo: str, timeout=TIMEOUT_CONFIRMACAO_ENVIO) -> bool:
+    def confirmar_envio(self, timeout=TIMEOUT_CONFIRMACAO_ENVIO) -> bool:
         """
-        Aguarda a mensagem com o arquivo aparecer na conversa com o ícone de check (✓/✓✓).
-        Não depende de classes CSS nem de idioma. Retorna False se não confirmar no timeout.
+        Aguarda a nova última mensagem da conversa exibir o check (✓/✓✓).
+        Usa o <title> do ícone (ex.: wds-ic-read), que não é traduzido.
+        Retorna False se não confirmar dentro do timeout.
         """
         logger.info("Aguardando confirmação de envio (check na mensagem)...")
-        nome_sem_extensao = os.path.splitext(nome_arquivo)[0]
         try:
             self.page.wait_for_function(
-                _JS_MENSAGEM_CONFIRMADA, arg=nome_sem_extensao, timeout=timeout
+                _JS_ULTIMA_MENSAGEM_CONFIRMADA, arg=self.MENSAGEM, timeout=timeout
             )
             return True
         except Exception as e:
-            icones = self._icones_perto_do_arquivo(nome_sem_extensao)
             logger.error(
                 f"Envio não confirmado em {timeout // 1000}s. "
-                f"Ícones encontrados perto do arquivo: {icones}. Detalhe: {e}"
+                f"Ícones na última mensagem: {self._icones_da_ultima_mensagem()}. Detalhe: {e}"
             )
             return False
 
-    def _icones_perto_do_arquivo(self, nome: str) -> list[str] | None:
-        """Diagnóstico: nomes dos ícones (data-icon) na bolha que contém o arquivo."""
+    def _icones_da_ultima_mensagem(self) -> list[str] | None:
+        """Diagnóstico: nomes dos ícones (<title> do SVG ou data-icon) na última mensagem."""
         try:
-            return self.page.evaluate(_JS_ICONES_PERTO_DO_ARQUIVO, nome)
+            return self.page.evaluate(_JS_ICONES_DA_ULTIMA_MENSAGEM, self.MENSAGEM)
         except Exception:
             return None
 
@@ -196,36 +198,32 @@ class WhatsAppPage:
                 raise e
 
 
-# Sobe a partir do elemento com o nome do arquivo até o tamanho de uma bolha de mensagem
-# (limitado pela altura, para não alcançar o restante da conversa).
-_JS_BOLHA_DO_ARQUIVO = """
-(nome) => {
-  const main = document.querySelector('#main');
-  if (!main) return [];
-  const folhas = [...main.querySelectorAll('*')]
-    .filter(e => e.children.length === 0 && (e.textContent || '').includes(nome));
-  return folhas.reverse().map(folha => {
-    const ancestrais = [];
-    for (let no = folha; no && no !== main; no = no.parentElement) {
-      if (no.getBoundingClientRect().height > 300) break;
-      ancestrais.push(no);
-    }
-    return ancestrais[ancestrais.length - 1];
-  }).filter(Boolean);
-}
-"""
+_ATRIBUTO_MENSAGEM_ANTERIOR = "data-boletobot-anterior"
 
-_JS_MENSAGEM_CONFIRMADA = f"""
-(nome) => {{
-  const bolhas = ({_JS_BOLHA_DO_ARQUIVO})(nome);
-  return bolhas.some(bolha => [...bolha.querySelectorAll('[data-icon]')]
-    .some(icone => /check/i.test(icone.getAttribute('data-icon'))));
+_JS_MARCAR_ULTIMA_MENSAGEM = f"""
+(seletor) => {{
+  const mensagens = document.querySelectorAll(seletor);
+  const ultima = mensagens[mensagens.length - 1];
+  if (ultima) ultima.setAttribute('{_ATRIBUTO_MENSAGEM_ANTERIOR}', '');
 }}
 """
 
-_JS_ICONES_PERTO_DO_ARQUIVO = f"""
-(nome) => {{
-  const bolhas = ({_JS_BOLHA_DO_ARQUIVO})(nome);
-  return bolhas.length ? [...bolhas[0].querySelectorAll('[data-icon]')].map(e => e.getAttribute('data-icon')) : [];
+_JS_ICONES_DA_ULTIMA_MENSAGEM = """
+(seletor) => {
+  const mensagens = document.querySelectorAll(seletor);
+  const ultima = mensagens[mensagens.length - 1];
+  if (!ultima) return [];
+  return [...ultima.querySelectorAll('svg title, [data-icon]')]
+    .map(e => e.tagName.toLowerCase() === 'title' ? e.textContent : e.getAttribute('data-icon'));
+}
+"""
+
+# ✓ = check, ✓✓ = read/dblcheck (o mesmo ícone é usado para "Entregue" e "Lida")
+_JS_ULTIMA_MENSAGEM_CONFIRMADA = f"""
+(seletor) => {{
+  const mensagens = document.querySelectorAll(seletor);
+  const ultima = mensagens[mensagens.length - 1];
+  if (!ultima || ultima.hasAttribute('{_ATRIBUTO_MENSAGEM_ANTERIOR}')) return false;
+  return ({_JS_ICONES_DA_ULTIMA_MENSAGEM.strip()})(seletor).some(icone => /check|read/i.test(icone));
 }}
 """

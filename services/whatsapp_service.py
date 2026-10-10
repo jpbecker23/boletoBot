@@ -76,7 +76,7 @@ def enviar_boleto(headless=HEADLESS) -> ResultadoEnvio:
         whatsapp.anexar_documento(boleto.caminho)
         whatsapp.enviar_anexo()
 
-        if not whatsapp.confirmar_envio(boleto.nome):
+        if not whatsapp.confirmar_envio():
             debug_path = os.path.join(CAMINHO_BOLETOS, "debug_whatsapp.png")
             whatsapp.screenshot_debug(debug_path)
             logger.error("Boleto mantido como pendente para nova tentativa.")
