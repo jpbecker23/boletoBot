@@ -71,6 +71,12 @@ def enviar_boleto(headless=HEADLESS) -> ResultadoEnvio:
         logger.info(f"Preparando envio do boleto: {boleto.nome}")
         whatsapp.anexar_documento(boleto.caminho)
         whatsapp.enviar_anexo()
+
+        if not whatsapp.confirmar_envio(boleto.nome):
+            debug_path = os.path.join(CAMINHO_BOLETOS, "debug_whatsapp.png")
+            whatsapp.screenshot_debug(debug_path)
+            logger.error("Boleto mantido como pendente para nova tentativa.")
+            return ResultadoEnvio.FALHA
         logger.info("Arquivo enviado com sucesso!")
 
         # Arquivamento

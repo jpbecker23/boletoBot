@@ -6,7 +6,7 @@ from core.config import (
     TIMEOUT_MENU_ANEXO,
     TIMEOUT_PREVIEW_ANEXO,
     TIMEOUT_ENVIO,
-    TIMEOUT_POS_ENVIO
+    TIMEOUT_CONFIRMACAO_ENVIO
 )
 
 logger = get_logger(__name__)
@@ -24,6 +24,14 @@ class WhatsAppPage:
         'div[role="button"][aria-label="Enviar"], '
         'div[role="button"][aria-label="Send"], '
         'span[data-icon="send"]'
+    )
+    MENSAGEM_ENVIADA = "div.message-out"
+    # Ícones de status da mensagem: msg-time (relógio) = ainda enviando;
+    # msg-check / msg-dblcheck = recebida pelo servidor do WhatsApp.
+    ICONE_ENVIO_CONFIRMADO = (
+        'span[data-icon="msg-check"], '
+        'span[data-icon="msg-dblcheck"], '
+        'span[data-icon="msg-dblcheck-ack"]'
     )
 
     def __init__(self, page):
@@ -124,8 +132,24 @@ class WhatsAppPage:
             # Failsafe supremo: Na tela de prévia, a tecla Enter envia o documento
             self.page.keyboard.press("Enter")
 
-        # Um pequeno wait para garantir que o upload do arquivo terminou no servidor deles
-        self.aguardar(TIMEOUT_POS_ENVIO)
+    def confirmar_envio(self, nome_arquivo: str, timeout=TIMEOUT_CONFIRMACAO_ENVIO) -> bool:
+        """
+        Aguarda a mensagem com o arquivo aparecer na conversa com o check de envio.
+        Retorna False se o check não aparecer dentro do timeout.
+        """
+        logger.info("Aguardando confirmação de envio (check na mensagem)...")
+        nome_sem_extensao = os.path.splitext(nome_arquivo)[0]
+        mensagem = self.page.locator(
+            self.MENSAGEM_ENVIADA, has_text=nome_sem_extensao
+        ).last
+        try:
+            mensagem.locator(self.ICONE_ENVIO_CONFIRMADO).first.wait_for(
+                state="attached", timeout=timeout
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Envio não confirmado em {timeout // 1000}s. Detalhe: {e}")
+            return False
 
     # ── Debug ──
 
