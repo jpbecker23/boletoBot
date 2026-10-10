@@ -1,5 +1,6 @@
 auth/
 boletos/
+logs/
 venv/
 __pycache__/
 .env
