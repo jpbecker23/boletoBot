@@ -54,6 +54,10 @@ def enviar_boleto(headless=HEADLESS) -> ResultadoEnvio:
                 whatsapp.capturar_qr_code(qr_path)
                 whatsapp.aguardar_scan_qr()
                 whatsapp.limpar_qr_code(qr_path)
+                # Após o login o WhatsApp abre a lista de conversas e descarta o link
+                # /send?phone=, então é preciso abrir a conversa do contato novamente
+                whatsapp.navegar_para_contato(CONTATO)
+                whatsapp.aguardar_carregamento()
 
             whatsapp.aguardar(3000)
             logger.info("Interface carregada!")
