@@ -1,4 +1,6 @@
 import os
+from dataclasses import dataclass
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -16,6 +18,42 @@ class PortalAuthError(Exception):
 
 class PortalDownloadError(Exception):
     """O portal retornou algo que não é o PDF do boleto."""
+
+
+@dataclass
+class BoletoPortal:
+    parcela: str
+    vencimento: str  # AAAA-MM-DD
+    href: str
+
+    @property
+    def nome_arquivo(self) -> str:
+        return f"{self.vencimento}_parcela-{self.parcela}.pdf"
+
+
+def extrair_boletos_abertos(html: str) -> list[BoletoPortal]:
+    """Lê o HTML do extrato e retorna as parcelas com status 'aberto' que possuem link de boleto."""
+    soup = BeautifulSoup(html, "html.parser")
+    boletos = []
+    for row in soup.find_all("tr"):
+        cols = row.find_all("td")
+        if len(cols) < 9:
+            continue
+
+        parcela = cols[1].get_text(strip=True)
+        vencimento = cols[6].get_text(strip=True)
+        status = cols[7].get_text(strip=True)
+
+        if status.lower() != "aberto":
+            continue
+
+        link = row.find("a", title="Imprimir Boleto")
+        if not link:
+            continue
+
+        dia, mes, ano = vencimento.split("/")
+        boletos.append(BoletoPortal(parcela=parcela, vencimento=f"{ano}-{mes}-{dia}", href=link["href"]))
+    return boletos
 
 
 def executar_download():
@@ -54,29 +92,10 @@ def executar_download():
         raise PortalAuthError(
             "Portal redirecionou para o login ao acessar o extrato. Sessão não foi aceita."
         )
-    soup = BeautifulSoup(response.text, "html.parser")
-    rows = soup.find_all("tr")
 
     count = 0
-    for row in rows:
-        cols = row.find_all("td")
-        if len(cols) < 9:
-            continue
-
-        vencimento = cols[6].get_text(strip=True)
-        status = cols[7].get_text(strip=True)
-        parcela = cols[1].get_text(strip=True)
-
-        if status.lower() != "aberto":
-            continue
-
-        link = row.find("a", title="Imprimir Boleto")
-        if not link:
-            continue
-
-        dia, mes, ano = vencimento.split("/")
-        vencimento_formatado = f"{ano}-{mes}-{dia}"
-        filename = f"{vencimento_formatado}_parcela-{parcela}.pdf"
+    for boleto in extrair_boletos_abertos(response.text):
+        filename = boleto.nome_arquivo
         savepath = os.path.join(CAMINHO_BOLETOS, filename)
         enviados_path = os.path.join(CAMINHO_BOLETOS, "enviados", filename)
 
@@ -84,8 +103,7 @@ def executar_download():
             logger.info(f"{filename} já existe (pendente ou enviado).")
             continue
 
-        href = link["href"]
-        boleto_url = BASE_URL_PORTAL + href
+        boleto_url = BASE_URL_PORTAL + boleto.href
         boleto_response = session.get(boleto_url, timeout=TIMEOUT_PORTAL_SEGUNDOS)
         boleto_response.raise_for_status()
         # Verifica a assinatura do arquivo: o portal pode responder 200 com uma página de erro em HTML

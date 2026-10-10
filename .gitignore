@@ -27,7 +27,7 @@ auth/*
 logs/
 
 # Tests
-*test*
+.pytest_cache/
 
 # Docs
 docs/
