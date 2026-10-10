@@ -35,6 +35,7 @@ USER_DATA_DIR = os.path.join(BASE_DIR, "auth")
 
 # ── Portal UVV ──
 BASE_URL_PORTAL = "https://aluno.uvv.br"
+TIMEOUT_PORTAL_SEGUNDOS = 30
 
 # ── Browser ──
 USER_AGENT = (
