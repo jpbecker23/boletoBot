@@ -34,6 +34,9 @@ USER_AGENT = (
     "Chrome/122.0.0.0 Safari/537.36"
 )
 BROWSER_ARGS = ["--disable-blink-features=AutomationControlled"]
+# Padrão visível: o WhatsApp Web carrega com mais confiabilidade com janela.
+# Em ambientes sem tela (Docker/servidor) defina HEADLESS=true.
+HEADLESS = os.getenv("HEADLESS", "false").strip().lower() == "true"
 
 # ── Docker / Modo contínuo ──
 INTERVALO_HORAS = os.getenv("INTERVALO_HORAS")

@@ -5,7 +5,7 @@ from core.config import CAMINHO_BOLETOS, INTERVALO_HORAS
 from core.logger import get_logger
 from services.boleto_service import listar_pendentes
 from services.portal_service import executar_download
-from services.whatsapp_service import enviar_boleto
+from services.whatsapp_service import ResultadoEnvio, enviar_boleto
 
 logger = get_logger(__name__)
 
@@ -33,8 +33,11 @@ def rotina_principal():
 
     logger.info("Etapa 2: Enviando via WhatsApp Web...")
     try:
-        sucesso_envio = enviar_boleto(headless=False)
-        if not sucesso_envio:
+        resultado = enviar_boleto()
+        if resultado == ResultadoEnvio.NADA_A_ENVIAR:
+            logger.info("Nenhum boleto dentro do prazo de envio. Encerrando.")
+            return "NO_BOLETOS"
+        if resultado == ResultadoEnvio.FALHA:
             logger.error("Falha no fluxo de envio do boleto.")
             return "ERROR"
     except Exception as e:

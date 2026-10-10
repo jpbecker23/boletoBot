@@ -1,9 +1,11 @@
 import os
+from enum import Enum
+
 from playwright.sync_api import sync_playwright
 
 from core.browser import create_context
 from core.config import (
-    CONTATO, CAMINHO_BOLETOS, USER_DATA_DIR,
+    CONTATO, CAMINHO_BOLETOS, USER_DATA_DIR, HEADLESS,
     TIMEOUT_FECHAMENTO, TIMEOUT_AUTENTICACAO_MANUAL
 )
 from core.logger import get_logger
@@ -13,7 +15,13 @@ from services.boleto_service import selecionar_boleto, arquivar_boleto
 logger = get_logger(__name__)
 
 
-def enviar_boleto(headless=True):
+class ResultadoEnvio(Enum):
+    ENVIADO = "ENVIADO"
+    NADA_A_ENVIAR = "NADA_A_ENVIAR"
+    FALHA = "FALHA"
+
+
+def enviar_boleto(headless=HEADLESS) -> ResultadoEnvio:
     """
     Fluxo completo de envio de boleto via WhatsApp Web.
 
@@ -27,10 +35,7 @@ def enviar_boleto(headless=True):
     boleto = selecionar_boleto()
 
     if not boleto:
-        # Se não há boleto e modo visível, abre apenas para autenticação
-        if not headless:
-            _abrir_para_autenticacao()
-        return False
+        return ResultadoEnvio.NADA_A_ENVIAR
 
     with sync_playwright() as p:
         context = create_context(p, headless=headless)
@@ -60,7 +65,7 @@ def enviar_boleto(headless=True):
             )
             debug_path = os.path.join(CAMINHO_BOLETOS, "debug_whatsapp.png")
             whatsapp.screenshot_debug(debug_path)
-            return False
+            return ResultadoEnvio.FALHA
 
         # Envio do boleto
         logger.info(f"Preparando envio do boleto: {boleto.nome}")
@@ -77,10 +82,10 @@ def enviar_boleto(headless=True):
             context.close()
         except Exception:
             pass
-        return True
+        return ResultadoEnvio.ENVIADO
 
 
-def _abrir_para_autenticacao():
+def abrir_para_autenticacao():
     """Abre o WhatsApp Web em modo visível apenas para permitir scan do QR Code."""
     with sync_playwright() as p:
         context = create_context(p, headless=False)
@@ -99,5 +104,7 @@ def _abrir_para_autenticacao():
 
 if __name__ == "__main__":
     import sys
-    is_headless = "--visible" not in sys.argv
-    enviar_boleto(headless=is_headless)
+    if "--vincular" in sys.argv:
+        abrir_para_autenticacao()
+    else:
+        enviar_boleto(headless=HEADLESS and "--visible" not in sys.argv)

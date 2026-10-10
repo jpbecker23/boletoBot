@@ -5,8 +5,8 @@ import threading
 import customtkinter as ctk
 from dotenv import set_key
 
-from core.config import VERSION
-from services.whatsapp_service import enviar_boleto
+from core.config import HEADLESS, VERSION
+from services.whatsapp_service import abrir_para_autenticacao, enviar_boleto
 from services.portal_service import executar_download
 
 # Configurações iniciais do CustomTkinter
@@ -132,9 +132,9 @@ class App(ctk.CTk):
         try:
             # Se estivermos em um EXE, chamamos a nós mesmos com a flag
             if getattr(sys, 'frozen', False):
-                subprocess.run([sys.executable, "--enviar", "--visible"], check=True)
+                subprocess.run([sys.executable, "--vincular"], check=True)
             else:
-                enviar_boleto(headless=False)
+                abrir_para_autenticacao()
             self.log("Navegador fechado.")
         except Exception as e:
             self.log(f"Erro ao abrir WhatsApp: {e}")
@@ -177,9 +177,11 @@ Register-ScheduledTask -Action $action1, $action2 -Trigger $trigger -TaskName "B
 if __name__ == "__main__":
     # Lógica de Multiproc para o Executável Único
     if len(sys.argv) > 1:
-        if "--enviar" in sys.argv:
-            is_headless = "--visible" not in sys.argv
-            enviar_boleto(headless=is_headless)
+        if "--vincular" in sys.argv:
+            abrir_para_autenticacao()
+            sys.exit(0)
+        elif "--enviar" in sys.argv:
+            enviar_boleto(headless=HEADLESS and "--visible" not in sys.argv)
             sys.exit(0)
         elif "--baixar" in sys.argv:
             executar_download()
