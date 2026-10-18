@@ -13,8 +13,12 @@ load_dotenv(ENV_PATH)
 MATRICULA = os.getenv("MATRICULA")
 PASSWORD = os.getenv("PASSWORD")
 
-# ── WhatsApp ──
+# ── WhatsApp (WAHA) ──
 CONTATO = os.getenv("CONTATO")
+WAHA_URL = (os.getenv("WAHA_URL") or "http://localhost:3000").rstrip("/")
+WAHA_API_KEY = os.getenv("WAHA_API_KEY")
+WAHA_SESSAO = os.getenv("WAHA_SESSAO") or "default"
+TIMEOUT_WAHA_SEGUNDOS = 60
 
 # ── Caminhos ──
 CAMINHO_BOLETOS = os.path.join(BASE_DIR, os.getenv("ARQUIVO") or "boletos")

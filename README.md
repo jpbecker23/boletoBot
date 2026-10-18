@@ -15,11 +15,11 @@ O **boletoBot** é um projeto pessoal criado para resolver o problema de esquece
 
 # Como Funciona
 
-A rotina é orquestrada pelo `main.py`:
+A rotina é orquestrada pelo `main.py`. Em toda execução, ela verifica primeiro se a sessão do WhatsApp está conectada:
 
 1. **Ingestão (`portal_service.py`):** autentica no portal UVV via HTTP, lê o extrato, identifica as parcelas com status `"aberto"` e baixa os PDFs para `boletos/`, no formato `AAAA-MM-DD_parcela-X.pdf`.
 2. **Seleção (`boleto_service.py`):** escolhe o boleto cujo vencimento falta **7 dias ou menos**.
-3. **Envio:** *em desenvolvimento na v2.*
+3. **Envio (`waha_notificador.py`):** envia o PDF pelo WhatsApp usando a API do [WAHA](https://waha.devlike.pro), que roda como um serviço separado.
 4. **Arquivamento (`boleto_service.py`):** após o envio, o PDF é movido para `boletos/enviados/`, evitando envios duplicados.
 
 Cada execução termina com código `0` (sucesso ou nada a fazer) ou `1` (falha). O histórico fica em `logs/boletobot.log`.
@@ -32,8 +32,10 @@ boletoBot/
 │   └── enviados/         # PDFs já enviados
 ├── core/                 # Configuração (.env) e logger
 ├── services/
-│   ├── boleto_service.py # Seleção pela regra de vencimento e arquivamento
-│   └── portal_service.py # Login no portal UVV e download dos boletos
+│   ├── boleto_service.py   # Seleção pela regra de vencimento e arquivamento
+│   ├── portal_service.py   # Login no portal UVV e download dos boletos
+│   ├── notificador.py      # Interface do canal de envio
+│   └── waha_notificador.py # Envio pelo WhatsApp via WAHA
 ├── tests/                # Testes unitários
 ├── logs/                 # Gerado automaticamente: histórico de execuções
 └── main.py               # Ponto de entrada da rotina
@@ -41,7 +43,7 @@ boletoBot/
 
 # Desenvolvimento
 
-Requer Python 3.10 ou superior.
+Requer Python 3.10 ou superior e uma instância do [WAHA](https://waha.devlike.pro) rodando, com a sessão do WhatsApp vinculada (pelo dashboard do WAHA).
 
 ```bash
 git clone https://github.com/jpbecker23/boletoBot.git
@@ -59,6 +61,10 @@ PASSWORD=sua_senha_aqui
 
 # Destinatário (DDI + DDD + número)
 CONTATO=5511999999999
+
+# API do WhatsApp (WAHA)
+WAHA_URL=http://localhost:3000
+WAHA_API_KEY=sua_api_key_do_waha
 
 # (Opcional) Pasta dos boletos. Padrão: boletos/ dentro do projeto.
 ARQUIVO=/app/boletos
