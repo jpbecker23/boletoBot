@@ -1,6 +1,6 @@
 services:
   waha:
-    image: devlikeapro/waha:gows-2026.9.2
+    image: devlikeapro/waha:${WAHA_IMAGE_TAG:-gows-2026.9.2}
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"   # dashboard acessível só a partir desta máquina
