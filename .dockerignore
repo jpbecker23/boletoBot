@@ -9,3 +9,6 @@ public/
 build/
 dist/
 *.spec
+pages/
+tests/
+.pytest_cache/

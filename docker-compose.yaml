@@ -1,0 +1,32 @@
+services:
+  waha:
+    image: devlikeapro/waha:gows-2026.9.2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"   # dashboard acessível só a partir desta máquina
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: GOWS
+      WAHA_API_KEY: ${WAHA_API_KEY}           # lido do .env, sem repassar o arquivo
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
+    volumes:
+      - waha_sessions:/app/.sessions          # volume nomeado: fora do projeto
+
+  bot:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - waha
+    env_file:
+      - .env
+    environment:                              # sobrescreve valores do .env
+      WAHA_URL: http://waha:3000              # nome do serviço na rede interna
+      ARQUIVO: /app/boletos
+      TZ: America/Sao_Paulo
+      INTERVALO_HORAS: "24"
+    volumes:
+      - ./boletos:/app/boletos                # mantém os PDFs e o histórico de enviados
+      - ./logs:/app/logs
+
+volumes:
+  waha_sessions:
