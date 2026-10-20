@@ -64,3 +64,12 @@ def test_boleto_fora_do_prazo_nao_e_enviado(pasta_boletos):
 
     assert main.rotina_principal(notificador) == "NO_BOLETOS"
     assert notificador.enviados == []
+
+
+def test_apos_erro_proxima_execucao_e_a_retentativa():
+    assert main.segundos_ate_proxima_execucao("ERROR", intervalo_horas=24) == main.INTERVALO_RETENTATIVA_MINUTOS * 60
+
+
+@pytest.mark.parametrize("status", ["SUCCESS", "NO_BOLETOS"])
+def test_sem_erro_proxima_execucao_segue_o_intervalo(status):
+    assert main.segundos_ate_proxima_execucao(status, intervalo_horas=24) == 24 * 3600

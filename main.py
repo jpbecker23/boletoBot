@@ -1,7 +1,7 @@
 import sys
 import time
 
-from core.config import INTERVALO_HORAS
+from core.config import INTERVALO_HORAS, INTERVALO_RETENTATIVA_MINUTOS
 from core.logger import get_logger
 from services.boleto_service import arquivar_boleto, listar_pendentes, selecionar_boleto
 from services.notificador import Notificador
@@ -57,6 +57,13 @@ def rotina_principal(notificador: Notificador):
     return "SUCCESS"
 
 
+def segundos_ate_proxima_execucao(status: str, intervalo_horas: int) -> int:
+    """Após um erro, a próxima tentativa vem antes do intervalo normal."""
+    if status == "ERROR":
+        return INTERVALO_RETENTATIVA_MINUTOS * 60
+    return intervalo_horas * 3600
+
+
 def main():
     notificador = WahaNotificador()
 
@@ -68,9 +75,13 @@ def main():
             f"Para desligar, pare o container."
         )
         while True:
-            rotina_principal(notificador)
-            logger.info(f"Dormindo por {horas} hora(s)... O bot acordará no próximo ciclo.")
-            time.sleep(horas * 3600)  # 3600 segundos = 1 hora
+            status = rotina_principal(notificador)
+            espera = segundos_ate_proxima_execucao(status, horas)
+            if status == "ERROR":
+                logger.info(f"Execução com erro. Nova tentativa em {espera // 60} minuto(s).")
+            else:
+                logger.info(f"Dormindo por {horas} hora(s)... O bot acordará no próximo ciclo.")
+            time.sleep(espera)
     else:
         # Execução padrão (roda apenas uma vez e se desliga)
         logger.info("MODO ÚNICO: O bot rodará uma vez e o container será desligado.")

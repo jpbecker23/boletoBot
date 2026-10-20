@@ -29,3 +29,5 @@ TIMEOUT_PORTAL_SEGUNDOS = 30
 
 # ── Modo contínuo ──
 INTERVALO_HORAS = os.getenv("INTERVALO_HORAS")
+# Após uma execução com erro, tenta de novo antes do intervalo normal
+INTERVALO_RETENTATIVA_MINUTOS = 60
