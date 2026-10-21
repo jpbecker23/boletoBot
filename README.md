@@ -5,131 +5,128 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![GitHub last commit](https://img.shields.io/github/last-commit/jpbecker23/boletoBot)
 ![GitHub repo size](https://img.shields.io/github/repo-size/jpbecker23/boletoBot)
-![Status](https://img.shields.io/badge/Status-v2%20em%20desenvolvimento-orange)
+![Status](https://img.shields.io/badge/Status-v2%20in%20development-orange)
 
-O **boletoBot** é um projeto pessoal criado para resolver o problema de esquecer de pagar mensalidades na data certa. Ele acessa o portal do aluno UVV, baixa o boleto em aberto e o envia pelo WhatsApp uma semana antes do vencimento.
+**boletoBot** is a personal project built to stop forgetting to pay university tuition on time. It logs into the UVV student portal, downloads the open *boleto* (Brazilian payment slip) and sends it via WhatsApp one week before the due date.
 
 > [!IMPORTANT]
-> **Quer apenas usar o bot no Windows, sem configurar nada?** Baixe a versão estável na aba [**Releases**](https://github.com/jpbecker23/boletoBot/releases/tag/v1.0.0). As instruções de uso estão na própria release.
+> **Just want to use the bot on Windows, with no setup?** Download the stable version from [**Releases**](https://github.com/jpbecker23/boletoBot/releases/tag/v1.0.0). Usage instructions are in the release notes.
 >
-> A branch `main` contém a **v2**, ainda em desenvolvimento: uma versão para servidor, que roda 24h com Docker, sem depender do seu computador ligado. O código da v1 (Playwright + WhatsApp Web) está preservado na branch [`legacy/v1`](https://github.com/jpbecker23/boletoBot/tree/legacy/v1).
+> The `main` branch contains **v2**, still in development: a server version that runs 24/7 with Docker, without depending on your computer being on. The v1 code (Playwright + WhatsApp Web) is preserved in the [`legacy/v1`](https://github.com/jpbecker23/boletoBot/tree/legacy/v1) branch.
 
-# Como Funciona
+# How It Works
 
-O projeto roda em dois containers: o **bot** (este código) e o [**WAHA**](https://waha.devlike.pro), uma API HTTP que mantém uma sessão do WhatsApp conectada 24h, como um aparelho vinculado.
+The project runs in two containers: the **bot** (this code) and [**WAHA**](https://waha.devlike.pro), an HTTP API that keeps a WhatsApp session connected 24/7, as a linked device.
 
-A cada execução, o `main.py`:
+On each run, `main.py`:
 
-1. **Verifica a conexão** com o WhatsApp, mesmo quando não há boleto a enviar, para detectar cedo uma sessão desconectada.
-2. **Baixa os boletos (`portal_service.py`):** autentica no portal UVV via HTTP, lê o extrato e baixa os PDFs das parcelas com status `"aberto"` para `boletos/`, no formato `AAAA-MM-DD_parcela-X.pdf`.
-3. **Seleciona (`boleto_service.py`)** o boleto cujo vencimento falta **7 dias ou menos**.
-4. **Envia (`waha_notificador.py`)** o PDF pelo WhatsApp através do WAHA.
-5. **Arquiva** o PDF em `boletos/enviados/` somente após o envio, evitando envios duplicados. Se o envio falhar, o boleto continua pendente.
+1. **Checks the WhatsApp connection**, even when there is nothing to send, to detect a disconnected session early.
+2. **Downloads the boletos (`portal_service.py`):** authenticates on the UVV portal via HTTP, reads the statement and downloads the PDFs of installments with status `"aberto"` (open) to `boletos/`, named `YYYY-MM-DD_parcela-X.pdf`.
+3. **Selects (`boleto_service.py`)** the boleto due in **7 days or less**.
+4. **Sends (`waha_notificador.py`)** the PDF via WhatsApp through WAHA.
+5. **Archives** the PDF to `boletos/enviados/` only after it is sent, preventing duplicates. If sending fails, the boleto stays pending.
 
-No Docker, o bot roda em loop a cada 24 horas. Após uma execução com erro (WAHA ainda iniciando, portal fora do ar etc.), ele tenta novamente em 60 minutos.
+In Docker, the bot runs in a loop every 24 hours. After a failed run (WAHA still starting, portal down, etc.), it retries in 60 minutes.
 
 # Stack
 
-- **Python 3.14** com `requests` e `beautifulsoup4` para o portal.
-- **WAHA** (motor GOWS, sem navegador) para o WhatsApp.
-- **Docker Compose** para executar os dois serviços juntos.
-- **pytest** para os testes.
+- **Python 3.14** with `requests` and `beautifulsoup4` for the portal.
+- **WAHA** (GOWS engine, no browser) for WhatsApp.
+- **Docker Compose** to run both services together.
+- **pytest** for tests.
 
-# Estrutura do Projeto
+# Project Structure
 
 ```text
 boletoBot/
 ├── core/
-│   ├── config.py             # Leitura do .env e constantes
-│   └── logger.py             # Logs no console e em logs/boletobot.log (com rotação)
+│   ├── config.py             # Reads .env and defines constants
+│   └── logger.py             # Logs to console and logs/boletobot.log (rotating)
 ├── services/
-│   ├── portal_service.py     # Login no portal UVV e download dos boletos
-│   ├── boleto_service.py     # Regra dos 7 dias e arquivamento
-│   ├── notificador.py        # Interface do canal de envio
-│   └── waha_notificador.py   # Envio pelo WhatsApp via WAHA
-├── tests/                    # Testes unitários
-├── main.py                   # Ponto de entrada da rotina
-├── Dockerfile                # Imagem do bot
+│   ├── portal_service.py     # UVV portal login and boleto download
+│   ├── boleto_service.py     # 7-day rule and archiving
+│   ├── notificador.py        # Delivery channel interface
+│   └── waha_notificador.py   # WhatsApp delivery via WAHA
+├── tests/                    # Unit tests
+├── main.py                   # Routine entry point
+├── Dockerfile                # Bot image
 ├── docker-compose.yaml       # Bot + WAHA
-├── boletos/                  # Gerado: PDFs pendentes e enviados/
-└── logs/                     # Gerado: histórico de execuções
+├── boletos/                  # Generated: pending PDFs and enviados/
+└── logs/                     # Generated: run history
 ```
 
-# Configuração
+# Configuration
 
-Crie o `.env` a partir do `.env.example`. Ele nunca deve ser versionado.
+Create `.env` from `.env.example`. It must never be committed.
 
-| Variável | Obrigatória | Descrição |
+| Variable | Required | Description |
 |---|---|---|
-| `MATRICULA` / `PASSWORD` | Sim | Acesso ao portal do aluno UVV |
-| `CONTATO` | Sim | Número que recebe o boleto, com DDI e DDD (ex.: `5527999999999`) |
-| `WAHA_API_KEY` | Sim | Chave que o bot usa para acessar o WAHA (e que o WAHA exige) |
-| `WAHA_DASHBOARD_USERNAME` / `WAHA_DASHBOARD_PASSWORD` | Sim (Docker) | Login do dashboard do WAHA |
-| `WAHA_URL` | Não | Endereço do WAHA. Padrão: `http://localhost:3000` |
-| `WAHA_SESSAO` | Não | Nome da sessão no WAHA. Padrão: `default` |
-| `WAHA_IMAGE_TAG` | Não | Tag da imagem do WAHA. Padrão: `gows-2026.9.2` (amd64). Em servidores ARM, use `gows-arm-2026.9.2` |
-| `ARQUIVO` | Não | Pasta dos boletos. Padrão: `boletos/` dentro do projeto |
-| `INTERVALO_HORAS` | Não | Modo contínuo, rodando a cada X horas. Se omitido, roda uma vez e encerra |
+| `MATRICULA` / `PASSWORD` | Yes | UVV student portal credentials |
+| `CONTATO` | Yes | Number that receives the boleto, with country and area code (e.g. `5527999999999`) |
+| `WAHA_API_KEY` | Yes | Key the bot uses to access WAHA (and that WAHA requires) |
+| `WAHA_DASHBOARD_USERNAME` / `WAHA_DASHBOARD_PASSWORD` | Yes (Docker) | WAHA dashboard login |
+| `WAHA_URL` | No | WAHA address. Default: `http://localhost:3000` |
+| `WAHA_SESSAO` | No | WAHA session name. Default: `default` |
+| `WAHA_IMAGE_TAG` | No | WAHA image tag. Default: `gows-2026.9.2` (amd64). On ARM servers, use `gows-arm-2026.9.2` |
+| `ARQUIVO` | No | Boletos folder. Default: `boletos/` inside the project |
+| `INTERVALO_HORAS` | No | Continuous mode, running every X hours. If omitted, runs once and exits |
 
-No Docker, o `docker-compose.yaml` sobrescreve `WAHA_URL` (`http://waha:3000`, o nome do serviço na rede interna), `ARQUIVO` (`/app/boletos`), `INTERVALO_HORAS` (`24`) e define `TZ=America/Sao_Paulo`.
+In Docker, `docker-compose.yaml` overrides `WAHA_URL` (`http://waha:3000`, the service name on the internal network), `ARQUIVO` (`/app/boletos`) and `INTERVALO_HORAS` (`24`), and sets `TZ=America/Sao_Paulo`.
 
-Para gerar uma `WAHA_API_KEY` e uma senha fortes:
+To generate a strong `WAHA_API_KEY` and password:
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-> [!WARNING]
-> Não use as credenciais de exemplo do quick start do WAHA: elas são públicas.
+# Running with Docker
 
-# Executando com Docker
+Requires Docker with the Compose plugin.
 
-Requer Docker com o plugin Compose.
-
-**1. Suba os serviços**
+**1. Start the services**
 ```bash
 docker compose up -d --build
 ```
 
-**2. Vincule o WhatsApp**
+**2. Link WhatsApp**
 
-Acesse `http://localhost:3000/dashboard`, faça login com as credenciais do dashboard, crie a sessão com o mesmo nome de `WAHA_SESSAO` (`default`, se não definida) e escaneie o QR Code pelo celular, em **WhatsApp → Aparelhos conectados**. A sessão fica salva no volume `waha_sessions` e sobrevive à recriação dos containers.
+Open `http://localhost:3000/dashboard`, log in with the dashboard credentials, create a session with the same name as `WAHA_SESSAO` (`default` if not set) and scan the QR code with your phone under **WhatsApp → Linked devices**. The session is stored in the `waha_sessions` volume and survives container recreation.
 
-**3. Teste uma execução**
+**3. Test a run**
 ```bash
 docker compose run --rm -e INTERVALO_HORAS=0 bot
 ```
 
-**Comandos úteis**
+**Useful commands**
 ```bash
-docker compose logs -f bot   # acompanha os logs do bot
-docker compose ps            # status dos containers
-docker compose down          # derruba os containers (a sessão continua no volume)
+docker compose logs -f bot   # follow the bot logs
+docker compose ps            # container status
+docker compose down          # stop the containers (the session stays in the volume)
 ```
 
-# Desenvolvimento (sem Docker)
+# Development (without Docker)
 
-Requer Python 3.10+ e um WAHA acessível. O jeito mais simples é subir só ele: `docker compose up -d waha`.
+Requires Python 3.10+ and a reachable WAHA. The easiest way is to start only WAHA: `docker compose up -d waha`.
 
 ```bash
 python -m venv venv
 # Windows: .\venv\Scripts\Activate.ps1  |  Linux/macOS: source venv/bin/activate
 pip install -r requirements-dev.txt
 
-python main.py       # executa a rotina uma vez
-python -m pytest     # executa os testes
+python main.py       # run the routine once
+python -m pytest     # run the tests
 ```
 
-# Segurança
+# Security
 
-- **O `.env` contém sua senha do portal e a API key:** nunca o versione. Em servidores, restrinja a permissão (`chmod 600 .env`).
-- **A sessão do WhatsApp equivale ao seu WhatsApp logado.** Ela fica apenas no volume Docker `waha_sessions`, fora do projeto e do repositório.
-- **O WAHA só é exposto em `127.0.0.1`.** Em um servidor, ninguém na internet alcança o dashboard. Para acessá-lo remotamente, use um túnel SSH:
+- **`.env` holds your portal password and the API key:** never commit it. On servers, restrict its permissions (`chmod 600 .env`).
+- **The WhatsApp session is equivalent to your logged-in WhatsApp.** It lives only in the `waha_sessions` Docker volume, outside the project and the repository.
+- **WAHA is only exposed on `127.0.0.1`.** On a server, nobody on the internet can reach the dashboard. To access it remotely, use an SSH tunnel:
   ```bash
-  ssh -L 3000:localhost:3000 usuario@servidor
+  ssh -L 3000:localhost:3000 user@server
   ```
-- O WAHA recebe apenas as variáveis de que precisa, e não o `.env` inteiro.
+- WAHA receives only the variables it needs, not the whole `.env`.
 
-# Contribuição
+# Contributing
 
-Este projeto é público para ajudar outros alunos com a mesma dificuldade. Para contribuir com uma feature ou correção, abra uma Issue explicando a ideia e fique à vontade para abrir um Pull Request.
+This project is public to help other students with the same problem. To contribute a feature or fix, open an Issue describing the idea and feel free to open a Pull Request.
