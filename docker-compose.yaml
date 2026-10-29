@@ -2,6 +2,12 @@ services:
   waha:
     image: devlikeapro/waha:${WAHA_IMAGE_TAG:-gows-2026.9.2}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/ping"]   # /ping não exige API key
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     ports:
       - "127.0.0.1:3000:3000"   # dashboard acessível só a partir desta máquina
     environment:
@@ -9,14 +15,20 @@ services:
       WAHA_API_KEY: ${WAHA_API_KEY}           # lido do .env, sem repassar o arquivo
       WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME}
       WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
+      NODE_OPTIONS: --max-old-space-size=256
     volumes:
       - waha_sessions:/app/.sessions          # volume nomeado: fora do projeto
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   bot:
     build: .
     restart: unless-stopped
     depends_on:
-      - waha
+      waha:
+        condition: service_healthy            # espera o WAHA responder, não só o container subir
     env_file:
       - .env
     environment:                              # sobrescreve valores do .env
@@ -27,6 +39,10 @@ services:
     volumes:
       - ./boletos:/app/boletos                # mantém os PDFs e o histórico de enviados
       - ./logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
 volumes:
   waha_sessions:
